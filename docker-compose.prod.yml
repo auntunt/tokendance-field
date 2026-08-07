@@ -1,0 +1,26 @@
+services:
+  field:
+    image: tokendance-field:latest
+    container_name: tokendance-field-1
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      PORT: 8800
+      HOSTNAME: 0.0.0.0
+      DATABASE_PATH: /data/tokendance-field.sqlite
+    ports:
+      - "127.0.0.1:8021:8800"
+    volumes:
+      - tokendance_field_data:/data
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8800/api/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+volumes:
+  tokendance_field_data:
+    name: tokendance_field_data

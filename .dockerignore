@@ -1,0 +1,16 @@
+node_modules
+.next
+data
+.env
+.env.*
+!.env.example
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+npm-debug.log*
+.DS_Store
+.git
+tests
+.test-build
+examples
+tsconfig.tsbuildinfo
