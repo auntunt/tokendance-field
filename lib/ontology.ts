@@ -69,13 +69,15 @@ export const RELATIONS: Array<{ id: RelationId; label: string; words: string[]; 
   },
 ];
 
-/** 局部边界五问：企业关系语境下的重写。缺一项即无法过第二道门。 */
+/** 局部边界五问：企业关系语境下的重写。缺一项即无法过第二道门。
+ *  label 写成问句而不是术语——界面上这五行是要人回答的问题，不是要人认识的名词。
+ *  key 与数量是内核契约（见 tests/discipline.test.mjs），只有文案可改。 */
 export const SCOPE_FIELDS: Array<{ key: keyof LocalScope; label: string; placeholder: string }> = [
-  { key: "entityScope", label: "主体范围", placeholder: "哪些法人？母公司还是子公司" },
-  { key: "marketRegion", label: "市场区域", placeholder: "在哪个市场或地区成立" },
-  { key: "dataBasis", label: "数据口径", placeholder: "营收 / 出货 / 产能，按什么算" },
-  { key: "timeWindow", label: "时间窗口", placeholder: "哪段时间内有效" },
-  { key: "ourAccess", label: "我方可用性", placeholder: "我们能拿到什么行动杠杆" },
+  { key: "entityScope", label: "涉及哪几家公司", placeholder: "写工商全称。母公司还是子公司要分清" },
+  { key: "marketRegion", label: "在哪个市场或地区", placeholder: "华东 / 全国 / 某个具体客户群" },
+  { key: "dataBasis", label: "里面的数字按什么算", placeholder: "营收 / 出货量 / 产能，口径是哪个" },
+  { key: "timeWindow", label: "哪段时间内有效", placeholder: "2026 上半年 / 这一轮招标周期" },
+  { key: "ourAccess", label: "我们能拿它做什么", placeholder: "能接触到谁、能提什么方案；没有就写没有" },
 ];
 
 // ============ 人物关系测绘（B2B 客户组织测绘）============

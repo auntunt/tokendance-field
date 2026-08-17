@@ -14,6 +14,8 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // Compiled test artefacts — not project source.
     ".test-build/**",
+    // Compiled report-builder artefacts — same reason.
+    ".report-build/**",
   ]),
 ]);
 

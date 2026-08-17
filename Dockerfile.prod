@@ -19,8 +19,12 @@ ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \
     HOSTNAME=0.0.0.0 \
     PORT=8800 \
-    DATABASE_PATH=/data/tokendance-field.sqlite
-RUN groupadd --system --gid 1001 nodejs && useradd --system --uid 1001 --gid nodejs nextjs && mkdir -p /data && chown -R nextjs:nodejs /data
+    DATABASE_PATH=/data/tokendance-field.sqlite \
+    FIELD_REPORTS_DIR=/reports
+# /reports 要在镜像里先建好并 chown：docker 给空 volume 挂载点做初始化时会继承
+# 镜像里那个目录的属主。不建的话 volume 归 root，容器里的 nextjs 读不了自己的报告。
+RUN groupadd --system --gid 1001 nodejs && useradd --system --uid 1001 --gid nodejs nextjs \
+    && mkdir -p /data /reports && chown -R nextjs:nodejs /data /reports
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public

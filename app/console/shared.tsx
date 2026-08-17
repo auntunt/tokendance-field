@@ -10,10 +10,9 @@ export function Step({ number, label, value }: { number: string; label: string; 
 
 export function EmptyField({ ready, onOpen }: { ready: boolean; onOpen: () => void }) {
   return <section className="empty-field">
-    <small>{ready ? "EMPTY RELATION MODEL" : "CONNECTING RELATION MODEL"}</small>
     <div className="empty-orbit"><i /><i /><i /><b>＋</b></div>
-    <h1>{ready ? "从一条可核查的企业关系开始。" : "正在连接团队账本。"}</h1>
-    <p>{ready ? "系统不预置案例，也不替你生成结论。先录入观察到的关系事实，再补齐主体范围、口径、证伪条件与反例。" : "正在读取团队共享的情报、判断与校准记录。"}</p>
-    {ready && <button className="primary-action" onClick={onOpen}>录入首条关系情报</button>}
+    <h1>{ready ? "还没有材料可判断。" : "正在连接…"}</h1>
+    <p>{ready ? "先去「收集」贴一段原文或给一个链接。这里不预置案例，也不替你生成结论。" : "正在读取已有的情报和记录。"}</p>
+    {ready && <button className="primary-action" onClick={onOpen}>去收集材料</button>}
   </section>;
 }

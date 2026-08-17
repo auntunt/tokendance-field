@@ -75,9 +75,40 @@ test("sandbox output is permanently tagged as simulation, server-side", async ()
   assert.match(simulate, /服务端强制打标/);
   assert.doesNotMatch(simulate, /signedOff|validUntil|falsifier/);
   // 推演走的仍是同一个隔离路径：hypothesis + related。
+  // 断言查的是"沙盘挂在 acceptCandidates 上"，不是它在导航里叫什么——
+  // 之前绑的是 view === "沙盘推演" 这个字面量，改个菜单名就假报警，而纪律根本没动。
   const consoleSource = await source("../app/signal-console.tsx");
-  assert.match(consoleSource, /view === "沙盘推演"/);
-  assert.match(consoleSource, /onAccept=\{acceptCandidates\}/);
+  assert.match(consoleSource, /<Sandbox onAccept=\{acceptCandidates\} \/>/);
+});
+
+test("版图不许把「没查过」画成「没有关系」", async () => {
+  // 这张热力图唯一会撒的谎就是这个：把没查过的格子涂成和"查过没有"一样的冷色，
+  // 于是一张几乎全空的图看起来像一份结论。三态必须是三种画法，
+  // 且图例第一行就得把空格子的含义写明。
+  const view = await source("../app/console/market-map.tsx");
+  assert.match(view, /没查过（不是「没有关系」）/);
+  // unchecked 的格子留空，不写 0——写 0 等于宣称"查过，结果是零"。
+  assert.match(view, /if \(cell\.state === "unchecked"\) return "";/);
+  assert.match(view, /disabled=\{cell\.state === "unchecked"\}/);
+
+  // 热度的定义留在内核侧，且只数独立第三方来源的去重材料。
+  // 行为断言在 tests/market-map.test.mjs，这里只守住"定义没有溜进 UI"。
+  const map = await source("../lib/market-map.ts");
+  assert.match(map, /sourceType === "independent"/);
+  assert.match(map, /distinctMaterials\(independent\)/);
+
+  // 归一化必须和后端判重共用一份。两份规则一旦分叉，
+  // 前端会说"两个来源"而后端说"同一份转载"，且两边都自称事实。
+  assert.match(map, /from "\.\/normalize-text"/);
+  const dedup = await source("../lib/dedup.ts");
+  assert.match(dedup, /export \{ normalizeCorpus \} from "\.\/normalize-text"/);
+  assert.doesNotMatch(dedup, /CJK_ADJACENT_SPACE = new RegExp/, "判重层不许再抄一份归一化规则");
+
+  // 版图是"把已入库情报换个看法"，不是新的一道门。
+  assert.doesNotMatch(map, /signedOff:\s*true/);
+  assert.doesNotMatch(view, /signedOff/);
+  // 口径不同的数字不许合计。
+  assert.match(view, /这里不合计/);
 });
 
 test("relation edges and origin survive a reload", async () => {

@@ -45,23 +45,23 @@ export function Sandbox({ onAccept }: { onAccept: (candidates: Candidate[]) => v
   }
 
   return <>
-    <ViewHeader kicker="SANDBOX / HYPOTHESIS ONLY" title="推演告诉你去找什么，不告诉你结论是什么" copy="给一个假设场景，推演器列出若它成立则应能观察到的信号。这些是待验证的清单，不是情报。写入后一律 0/6，必须找到真实来源才能过闸。" />
+    <ViewHeader kicker="第 3 步 / 下结论" title="推演只告诉你该去找什么" copy="写一个假设场景，它会列出「如果这事真的，应该能看到哪些迹象」。这是一份待查清单，不是情报——每一条进来都是六项全空的。" />
     <div className="sandbox-warn">
-      <b>推演 ≠ 情报</b>
-      <span>这里产出的每一条都带 [推演] 前缀，来源标记为 simulation，六道门全空。你不能靠推演过闸——这是代码级约束，不是提醒。</span>
+      <b>推演出来的不是事实</b>
+      <span>每条都带 [推演] 前缀，六项全空。想让它变成能用的判断，只有一条路：去找到真实出处，再把六项补齐。这是代码写死的，不是一句提醒。</span>
     </div>
     <div className="intake-grid">
       <section className="intake-input">
-        <small>01 / SCENARIO</small>
+        <small>先写场景</small>
         <label htmlFor="sandbox-scenario">写下一个假设场景
           <textarea id="sandbox-scenario" value={scenario} onChange={event => setScenario(event.target.value)} placeholder="例：某头部电池厂在 2026 下半年切入固态电池，并绑定一家整车厂做独家配套。&#10;写清楚：谁、做什么、在什么市场、什么时间窗口。" />
         </label>
         {error && <p className="intake-error" role="alert">● {error}</p>}
         <button className="primary-action" disabled={running} onClick={simulate}>{running ? "推演中…" : "推演应能观察到的信号"}</button>
-        <p className="intake-note">推演器被限制成和抽取器同一个输出格式：谁—对谁—什么关系。区别是 quote 位置写的是“应该能在哪找到什么”，而不是原文。</p>
+        <p className="intake-note">推演出来的每条也是「谁—对谁—什么关系」，跟收集里挑出来的长得一样。唯一的区别：出处那一栏写的是「该去哪找、找什么」，而不是一段原文。</p>
       </section>
       <section className="intake-output">
-        <small>02 / OBSERVABLE SIGNALS</small>
+        <small>该能看到的迹象</small>
         <h3>{candidates.length ? `${candidates.length} 条待验证信号` : "等待推演"}</h3>
         {notice && candidates.length > 0 && <p className="intake-note sandbox-notice">{notice}</p>}
         <div className="candidate-list">

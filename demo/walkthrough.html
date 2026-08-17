@@ -1,0 +1,434 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Intel Engine · 真实操作实录</title>
+<style>
+:root{
+  --bg:#080c11; --panel:#0d1319; --line:rgba(126,148,170,.16);
+  --ink:#dce5ee; --dim:#7f8e9d; --faint:#54626f;
+  --cyan:#41c6cc; --amber:#ffad21; --red:#ff543d;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;background:var(--bg);color:var(--ink);
+  font:400 15px/1.75 -apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB",sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+body::before{
+  content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+  background-image:linear-gradient(rgba(126,148,170,.035) 1px,transparent 1px),
+                   linear-gradient(90deg,rgba(126,148,170,.035) 1px,transparent 1px);
+  background-size:44px 44px;
+}
+.wrap{position:relative;z-index:1;max-width:1120px;margin:0 auto;padding:0 28px 120px}
+
+/* ── 头部 ── */
+header.top{padding:96px 0 60px;border-bottom:1px solid var(--line)}
+.kicker{
+  margin:0 0 22px;color:var(--amber);
+  font:600 10px/1 var(--mono);letter-spacing:.22em;text-transform:uppercase;
+}
+header.top h1{margin:0 0 20px;font-size:clamp(30px,5vw,50px);line-height:1.18;font-weight:600;letter-spacing:-.01em}
+header.top .lede{max-width:74ch;margin:0;color:var(--dim);font-size:16px}
+.meta-row{display:flex;flex-wrap:wrap;gap:10px;margin-top:34px}
+.meta-row span{
+  padding:6px 11px;border:1px solid var(--line);color:var(--faint);
+  font:400 10px/1.5 var(--mono);letter-spacing:.06em;
+}
+
+/* ── 结论条 ── */
+.verdict{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(158px,1fr));
+  gap:0;margin:0;border:1px solid var(--line);border-top:none;
+}
+.verdict div{padding:22px 20px;border-right:1px solid var(--line)}
+.verdict div:last-child{border-right:none}
+.verdict b{display:block;color:var(--ink);font:600 26px/1 var(--mono);letter-spacing:-.02em}
+.verdict b.on{color:var(--cyan)}
+.verdict b.warn{color:var(--amber)}
+.verdict small{display:block;margin-top:9px;color:var(--faint);font-size:11px;line-height:1.6}
+
+/* ── 章节 ── */
+section.step{padding:66px 0;border-bottom:1px solid var(--line)}
+.step-no{
+  display:inline-block;margin:0 0 16px;padding:4px 9px;
+  border:1px solid rgba(255,173,33,.3);color:var(--amber);
+  font:600 10px/1 var(--mono);letter-spacing:.16em;
+}
+section.step h2{margin:0 0 14px;font-size:25px;line-height:1.32;font-weight:600}
+section.step .why{max-width:78ch;margin:0 0 30px;color:var(--dim);font-size:15px}
+section.step .why em{color:var(--ink);font-style:normal;font-weight:500}
+
+/* ── 操作记录 ── */
+.act{margin:0 0 26px;border-left:2px solid rgba(255,173,33,.34);padding:2px 0 2px 18px}
+.act p{margin:0 0 7px;color:var(--faint);font:400 11px/1.7 var(--mono);letter-spacing:.02em}
+.act p:last-child{margin-bottom:0}
+.act p b{color:var(--dim);font-weight:400}
+.act p code{color:var(--cyan);font-family:var(--mono)}
+
+/* ── 截图 ── */
+figure{margin:0 0 26px}
+figure img{
+  display:block;width:100%;height:auto;
+  border:1px solid var(--line);background:var(--panel);
+}
+figure figcaption{
+  margin-top:11px;color:var(--faint);font-size:12px;line-height:1.7;
+}
+figure figcaption b{color:var(--dim);font-weight:500}
+.pair{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:0 0 26px}
+.pair figure{margin:0}
+@media(max-width:820px){.pair{grid-template-columns:1fr}}
+
+/* ── 观察结论 ── */
+.finding{
+  margin:0 0 22px;padding:19px 21px;
+  border:1px solid var(--line);background:rgba(13,19,25,.72);
+}
+.finding h4{
+  margin:0 0 10px;color:var(--cyan);
+  font:600 10px/1 var(--mono);letter-spacing:.16em;text-transform:uppercase;
+}
+.finding.warn h4{color:var(--amber)}
+.finding p{margin:0 0 9px;font-size:14px;line-height:1.8}
+.finding p:last-child{margin-bottom:0}
+.finding code{
+  padding:1px 5px;background:rgba(65,198,204,.1);color:var(--cyan);
+  font:400 12px/1 var(--mono);
+}
+
+/* ── 数据表 ── */
+table{width:100%;border-collapse:collapse;margin:0 0 26px;font-size:13px}
+th,td{padding:10px 13px;border:1px solid var(--line);text-align:left;vertical-align:top}
+th{color:var(--faint);font:600 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase;font-weight:600}
+td{color:var(--dim);line-height:1.7}
+td b{color:var(--ink);font-weight:500}
+td .g{color:var(--cyan);font-family:var(--mono)}
+td .y{color:var(--amber);font-family:var(--mono)}
+td .n{color:var(--faint);font-family:var(--mono)}
+
+/* ── 页脚 ── */
+footer{padding:56px 0 0;color:var(--faint);font-size:12px;line-height:1.9}
+footer strong{display:block;margin-bottom:12px;color:var(--dim);font-size:13px;font-weight:500}
+footer ul{margin:0;padding-left:19px}
+footer li{margin-bottom:6px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <p class="kicker">Intel Engine · Local Relation Judgment</p>
+  <h1>一条私下听来的消息，<br>被系统拦在了执行门外</h1>
+  <p class="lede">
+    这份实录不是产品演示视频的文字版。它是一次真实操作的逐步记录：在跑着的系统上录入情报、
+    补齐约束、加人入册，每一步的界面状态都截了图。包括系统当场拦住我的地方——那些才是它的价值所在。
+  </p>
+  <div class="meta-row">
+    <span>2026-08-08 · 真实操作</span>
+    <span>浏览器自动化驱动，非手工摆拍</span>
+    <span>主体为虚构测试语料</span>
+    <span>11 张界面截图 · 10 个步骤</span>
+  </div>
+</header>
+
+<div class="verdict">
+  <div><b class="on">6/6</b><small>公开可查的股权关系<br>走完六道门，允许执行</small></div>
+  <div><b class="warn">5/6</b><small>私下听来的签批权限<br>差专家签署，停在门外</small></div>
+  <div><b>10 / 1</b><small>账本共 10 条关系<br>只有 1 条过闸</small></div>
+  <div><b>3 人</b><small>入册即 0 条过闸判断<br>写着不等于查过</small></div>
+</div>
+
+<section class="step">
+  <span class="step-no">STEP 01</span>
+  <h2>起点：一条已经过闸的关系，和一个不下结论的分数</h2>
+  <p class="why">
+    打开控制台，第一条情报是广联达认购斯维尔 31.2% 股权。右侧「候选度 48」下面写着一句
+    <em>只决定拷问优先级，不决定行动</em>——这是整个系统的态度：分数高不代表可信，
+    它只决定你先审哪一条。四个维度里只有「资本关联」命中了关键词，其余三项都标着「缺少明确线索」。
+  </p>
+  <figure>
+    <img src="shots/01-baseline.png" alt="控制台首屏：情报卡片与候选度评分">
+    <figcaption><b>基线状态。</b>底栏 9 INTELLIGENCE / 9 RELATIONS / 0 ADMITTED——九条关系，零条被允许执行。</figcaption>
+  </figure>
+</section>
+
+<section class="step">
+  <span class="step-no">STEP 02</span>
+  <h2>六道门：每一道都是否决权</h2>
+  <p class="why">
+    往下滚，是约束门。六个格子——原始证据、本地边界、认识状态、证伪反例、来源时效、专家签署——
+    <em>任一不过，整条判断就不能进入执行</em>。它不是打分求和，是六个串联开关。
+  </p>
+  <div class="act">
+    <p><b>操作 ›</b> 滚动到约束门区域，读取门状态</p>
+    <p><b>读到 ›</b> <code>5 / 6 保持拦截</code>，门 5「来源 / 时效」显示为未通过</p>
+  </div>
+  <figure>
+    <img src="shots/02-gates.png" alt="约束门六格与四张约束卡片">
+    <figcaption><b>为什么是 5/6。</b>这条情报的有效期填的是 <code>2026-08-07</code>，而今天是 08-08。<b>时效过期，门自动落下</b>——不需要谁去手动撤回。</figcaption>
+  </figure>
+  <div class="finding">
+    <h4>这是真实触发，不是摆拍</h4>
+    <p>
+      演示前我查了库：这条记录的 <code>valid_until</code> 就是 <code>2026-08-07</code>，
+      而系统时间已到 08-08。情报会随时间自己失效，是写进 <code>gateState()</code> 的规则，
+      不依赖任何人记得来清理。
+    </p>
+  </div>
+</section>
+
+<section class="step">
+  <span class="step-no">STEP 03</span>
+  <h2>意外收获：改了前提，签名自己作废了</h2>
+  <p class="why">
+    我把有效期改到 2026-08-20，想让门 5 通过。门 5 确实翻成了 ✓——
+    但<em>门 6「专家签署」同时从 ✓ 翻回了未签</em>，总数还是 5/6。
+    这不是 bug。我去查了代码：约束面板里每一个字段的 <code>onChange</code> 都带 <code>signedOff: false</code>。
+  </p>
+  <div class="act">
+    <p><b>操作 ›</b> 有效期 <code>2026-08-07</code> → <code>2026-08-20</code></p>
+    <p><b>门 5 ›</b> 未通过 → <code>✓ 来源 / 时效</code></p>
+    <p><b>门 6 ›</b> <code>✓ 已由专家签署</code> → <code>签署这次关系判断</code>（签名被撤销）</p>
+    <p><b>总数 ›</b> <code>5 / 6</code> → <code>5 / 6</code>（没变）</p>
+  </div>
+  <figure>
+    <img src="shots/03-revoked.png" alt="改动有效期后签名被自动撤销">
+    <figcaption><b>右下角按钮回到了未签状态。</b>专家签的是「在这些前提下我认为成立」。前提一动，签名就不再指向同一件事。</figcaption>
+  </figure>
+  <div class="finding">
+    <h4>签名绑定的是前提，不是结论</h4>
+    <p>
+      这条设计避免了一种很常见的腐化：三个月前签过的判断，中间悄悄改了口径和时间窗口，
+      签名却还挂在上面，看起来仍然「已审核」。这里做不到——<b>改任何一个前提，都必须重签</b>。
+    </p>
+  </div>
+</section>
+
+<section class="step">
+  <span class="step-no">STEP 04</span>
+  <h2>重新签署，执行解锁</h2>
+  <p class="why">
+    前五道门都是 ✓ 了，签署按钮才可点。点下去，6/6，允许执行。
+    注意顶部流程条的第 04 段：从「约束拦截」变成了「允许进入」。
+  </p>
+  <div class="act">
+    <p><b>操作 ›</b> 点击「签署这次关系判断」</p>
+    <p><b>门 ›</b> <code>6 / 6 允许执行</code></p>
+    <p><b>流程条 04 ›</b> 约束拦截 → <code>允许进入</code></p>
+    <p><b>底栏 ›</b> <code>0 ADMITTED</code> → <code>1 ADMITTED</code></p>
+    <p><b>反馈区标题 ›</b> 「约束门 5/6：尚不能进入执行」→「真实结果，支持这次关系判断吗？」</p>
+  </div>
+  <figure>
+    <img src="shots/04-signed.png" alt="六道门全过，执行解锁">
+    <figcaption><b>解锁后才出现的东西。</b>底部「结果证据 ✓支持 / ○观察 / ×反例」三个按钮此时才变为可用——<b>没进过执行的判断，不接受结果反馈</b>，否则归因就是假的。</figcaption>
+  </figure>
+</section>
+
+<section class="step">
+  <span class="step-no">STEP 05</span>
+  <h2>人物测绘：加三个人，故意埋两个坑</h2>
+  <p class="why">
+    销售真正要问的不是「这两家公司什么关系」，是「我该找谁」。人物测绘只记公开职业事实与我方通路。
+    我加了三个人，其中两个是<em>刻意设的中文姓名陷阱</em>：李全和李全德是不同的两个人，
+    而韩小明在名册里带花名「（明哥）」。
+  </p>
+  <div class="act">
+    <p><b>录入 ›</b> 韩小明（明哥）· 流程与数字化中心 · 总经理 · 通路「峰会晚宴见过一次，未深谈」</p>
+    <p><b>录入 ›</b> 李全 · 采购部 · 高级经理 · 通路「无」</p>
+    <p><b>录入 ›</b> 李全德 · 集团 · 副总裁 · 通路「无」</p>
+  </div>
+  <figure>
+    <img src="shots/05-roster.png" alt="人物名册，三人在册">
+    <figcaption><b>三人全部标着「0 条已过闸判断」。</b>下面那行黄字：<b>「还没有任何一条关于他的判断走完六道门。现在从他切入，凭的是印象不是判断。」</b>入册不给人任何可信度。</figcaption>
+  </figure>
+  <div class="finding">
+    <h4>克制的地方：不给人打分</h4>
+    <p>
+      没有过闸判断的人只给中性灰，不给红色警告。他不是一条坏线索，只是<b>还没做功课</b>。
+      系统区分「这个人有问题」和「我们还没查」——这两件事混在一起，销售就会误读。
+    </p>
+  </div>
+</section>
+
+<section class="step">
+  <span class="step-no">STEP 06</span>
+  <h2>录一条私下听来的消息</h2>
+  <p class="why">
+    语料第六节有条真实感很强的东西：我方销售在峰会晚宴上，从对方采购部一位不愿具名的经理处听到，
+    工业软件选型的签批权限已上收至韩小明。<em>只有一人口述，无书面材料，本人还强调尚未下发正式文件。</em>
+    这类消息在真实销售场景里含金量最高，也最容易被当成事实往上报。
+  </p>
+  <div class="act">
+    <p><b>操作 ›</b> 点击「＋ 录入情报」，填写标题、原始依据、来源、主体 A/B</p>
+    <p><b>关系类型 ›</b> 人事交叉，方向 A → B 单向</p>
+    <p><b>提交后 ›</b> <code>2 / 6 保持拦截</code>，底栏 <code>10 INTELLIGENCE / 10 RELATIONS</code></p>
+    <p><b>提示 ›</b> 「情报已入场：下一步补齐主体范围与证伪条件」</p>
+  </div>
+  <figure>
+    <img src="shots/07-after-intake.png" alt="新情报入场，约束门 2/6">
+    <figcaption><b>入场即拦。</b>录进来只过了门 1（有原始依据）和门 3（认识状态默认为观察），其余四道全落着。<b>系统不会因为你录了就信你。</b></figcaption>
+  </figure>
+</section>
+
+<section class="step">
+  <span class="step-no">STEP 07</span>
+  <h2>私下渠道被收得更紧，不是更松</h2>
+  <p class="why">
+    我逐项补齐：局部边界五项、认识状态改「假设」、写证伪条件和当前反例。门数走到 4/6。
+    然后把来源谱系设为「我方人际渠道」，有效期填 2026-09-30——
+    <em>这两项都填了，门 5 依然拦着。</em>
+  </p>
+  <table>
+    <tr><th>动作</th><th>门数</th><th>还差什么</th></tr>
+    <tr><td><b>补齐局部边界</b>五项（主体范围 / 市场区域 / 数据口径 / 时间窗口 / 我方可用性）</td><td><span class="y">3 / 6</span></td><td>证伪与反例、来源时效、签署</td></tr>
+    <tr><td><b>写证伪条件 + 当前反例</b>（「鼎信下发正式采购权限文件」即推翻）</td><td><span class="y">4 / 6</span></td><td>来源时效、签署</td></tr>
+    <tr><td><b>来源改「我方人际渠道」+ 填有效期</b></td><td><span class="y">4 / 6</span></td><td><b>门 5 仍不过</b>——差人际出处</td></tr>
+    <tr><td><b>补人际出处</b>（谁、什么场合、我方谁在场）</td><td><span class="g">5 / 6</span></td><td>只差专家签署</td></tr>
+  </table>
+  <div class="pair">
+    <figure>
+      <img src="shots/08-internal-blocked.png" alt="internal 来源但未填人际出处，门 5 仍拦">
+      <figcaption><b>4/6。</b>来源和有效期都填了，门 5 还是红的。</figcaption>
+    </figure>
+    <figure>
+      <img src="shots/09-internal-passed.png" alt="补上人际出处后门 5 通过">
+      <figcaption><b>5/6。</b>补上「谁在什么场合说的」，门 5 才翻。</figcaption>
+    </figure>
+  </div>
+  <div class="finding warn">
+    <h4>反直觉的设计选择</h4>
+    <p>
+      多数系统会给内部消息开后门——「这是我们自己人拿到的，可信度高」。这里反过来：
+      <code>internal</code> 在门 5 上<b>不但不豁免，还额外要求写清人际出处</b>。
+    </p>
+    <p>
+      理由很简单：说不出「谁在什么场合说的」的私下消息，连来源谱系都不成立。
+      私下渠道是最容易变成「我听说」的地方，所以它需要被收得更紧。
+    </p>
+  </div>
+  <div class="finding">
+    <h4>我在这里主动停下了</h4>
+    <p>
+      门 5/6，签署按钮已经可点。<b>我没有点。</b>
+      这条消息只有一人口述、无书面材料、当事人自己强调尚未下发文件——
+      真实场景下它就该停在执行门外。签署代表专家判断，不该由跑演示的人代签。
+    </p>
+  </div>
+</section>
+
+<section class="step">
+  <span class="step-no">STEP 08</span>
+  <h2>回看人物：两个中文姓名陷阱都没踩</h2>
+  <p class="why">
+    情报正文里写的是本名「韩小明」，名册里写的是「韩小明（明哥）」。同时，
+    正文里完全没提李全和李全德。回到人物测绘看命中结果：
+  </p>
+  <table>
+    <tr><th>人物</th><th>名册写法</th><th>情报写法</th><th>相关情报</th><th>是否正确</th></tr>
+    <tr><td><b>韩小明</b></td><td>韩小明（明哥）</td><td>韩小明</td><td><span class="g">1 条</span></td><td>✓ 花名不影响命中</td></tr>
+    <tr><td><b>李全</b></td><td>李全</td><td>未提及</td><td><span class="n">0 条</span></td><td>✓ 没被「李全德」带出来</td></tr>
+    <tr><td><b>李全德</b></td><td>李全德</td><td>未提及</td><td><span class="n">0 条</span></td><td>✓ 没被「李全」误命中</td></tr>
+  </table>
+  <figure>
+    <img src="shots/11-person-detail.png" alt="展开韩小明，关联主体标 0/6，相关情报标 5/6">
+    <figcaption>
+      <b>展开后两个数字的区别，是这一版最要紧的地方。</b>
+      关联主体「鼎信数字工程股份有限公司」标着 <code>0/6</code>——它来自名册的雇主一栏，是录入时的自述，<b>没有任何情报支撑</b>。
+      下面那条相关情报标着 <code>5/6</code>，那是真走过门的。
+    </figcaption>
+  </figure>
+  <div class="finding">
+    <h4>写着不等于查过</h4>
+    <p>
+      名册里填「他在鼎信当总经理」，这是一句事实声明，不是一条经过核查的关系判断。
+      所以它记 <code>0/6</code>，而不是伪装成一条已验证的连接。
+      <b>这两种东西在同一个界面上必须长得不一样</b>，否则销售会把前者当后者用。
+    </p>
+  </div>
+</section>
+
+<section class="step">
+  <span class="step-no">STEP 09</span>
+  <h2>关系图：颜色只说过了几道门，不说置信度</h2>
+  <p class="why">
+    13 个主体、10 条关系、1 条已过闸。图上三档颜色一眼可辨——
+    <em>青实线是六道门全过，黄虚线是过了 4–5 道，灰虚线是过闸不足</em>。
+  </p>
+  <div class="act">
+    <p><b>DOM 校验 ›</b> <code>polygon: 14</code>（手绘箭头）<code>marker: 0</code></p>
+    <p><b>颜色分布 ›</b> 青 <code>#41c6cc</code> ×1 · 黄 <code>#ffad21</code> ×1 · 灰 ×12</p>
+  </div>
+  <figure>
+    <img src="shots/12-graph.png" alt="关系图，青实线一条、黄虚线一条、其余灰虚线">
+    <figcaption>
+      <b>青实线</b>是广联达 → 斯维尔（STEP 04 刚签的 6/6）。<b>黄虚线</b>是鼎信 → 流程与数字化中心（STEP 07 停在 5/6 的那条）。其余十二个箭头全是灰的。
+    </figcaption>
+  </figure>
+  <div class="finding">
+    <h4>右侧那段说明，值得单独读</h4>
+    <p>
+      「<b>为什么不按置信度上色</b>：置信度可以被自信的措辞抬高，过闸数不行——它数的是有没有写边界、
+      证伪条件、来源谱系和签署。」
+    </p>
+    <p>
+      箭头只表示方向：单箭头是单向关系，两端都有箭头是互相关系。<b>方向不改变可信度，颜色仍只看过闸数。</b>
+    </p>
+  </div>
+</section>
+
+<section class="step">
+  <span class="step-no">STEP 10</span>
+  <h2>证据账本：证伪条件缺失，是要标出来的</h2>
+  <p class="why">
+    账本按过闸数排序，每条都并列显示<em>证伪</em>和<em>反例</em>两栏。
+    十条情报里只有两条写了——就是我这次动过的那两条。其余八条明晃晃标着「缺失」。
+  </p>
+  <figure>
+    <img src="shots/13-ledger.png" alt="证据账本，证伪与反例并列显示">
+    <figcaption>
+      顶部那句：<b>「专业性不来自支持材料的数量，而来自这条关系判断能否承受最强反证。」</b>
+      账本不藏短板——没写反例的条目就是要被看见。
+    </figcaption>
+  </figure>
+  <table>
+    <tr><th>情报</th><th>门</th><th>证伪</th><th>反例</th><th>概率</th></tr>
+    <tr><td>广联达认购斯维尔 31.2% 股权</td><td><span class="g">6/6</span></td><td class="g">已写</td><td class="g">已写</td><td>75%</td></tr>
+    <tr><td>鼎信选型签批权限上收至韩小明</td><td><span class="y">5/6</span></td><td class="g">已写</td><td class="g">已写</td><td>50%</td></tr>
+    <tr><td>广联达（上海）收购鲁班软件 100%</td><td><span class="n">2/6</span></td><td class="n">缺失</td><td class="n">缺失</td><td>50%</td></tr>
+    <tr><td>广联达向华为云采购算力</td><td><span class="n">2/6</span></td><td class="n">缺失</td><td class="n">缺失</td><td>50%</td></tr>
+    <tr><td>中建八局为广联达重要客户</td><td><span class="n">2/6</span></td><td class="n">缺失</td><td class="n">缺失</td><td>50%</td></tr>
+    <tr><td>广联达与品茗在造价软件市场竞争</td><td><span class="n">2/6</span></td><td class="n">缺失</td><td class="n">缺失</td><td>50%</td></tr>
+  </table>
+  <div class="finding warn">
+    <h4>概率都停在 50%，不是巧合</h4>
+    <p>
+      未经处理的情报默认 50%——<b>系统拒绝替你给出初始倾向</b>。
+      概率必须由人在写完边界和证伪条件之后手动给，这样「75%」才有意义：
+      在相同主体范围、口径和时间窗口下，十次中约七次能被后续事实支持。
+    </p>
+  </div>
+</section>
+
+<footer>
+  <strong>关于这份实录</strong>
+  <ul>
+    <li>所有截图来自 2026-08-08 的一次连续操作，浏览器自动化驱动，界面状态未经修饰。</li>
+    <li>主体、人名、金额、比例全部虚构，取自专供测试的语料文件。<b>台账在演示前已备份，演示数据随后清理。</b></li>
+    <li>约束门逻辑见 <code>lib/field-core.ts</code> 的 <code>gateState()</code>；六道门渲染在四张卡片上。</li>
+    <li>本页只用到静态 HTML 与 CSS，无 JavaScript、无外部依赖，可直接双击打开或整个目录发给别人。</li>
+  </ul>
+</footer>
+
+
+
+
+
+
+
+</body>
+</html>

@@ -98,9 +98,27 @@ export function isExpired(signal: Signal) {
   return Number.isFinite(deadline) && deadline < Date.now();
 }
 
-/** 六道约束门。缺一道就不进入执行——原版逻辑，未改。 */
+/** 「未知」「待补充」这类词等于没填。
+ *  必须在门里挡，不能只在 UI 里提示：自动提议一旦上线，模型和采集器都会往
+ *  范围字段里写「未知」（analyze 的提示词里就明确允许「或未知」），
+ *  而门 2 只检查字符串非空——那样填一个「未知」就假过闸，
+ *  自动化生产出来的就是假确定性，比空着有害。
+ *
+ *  这里只收「我没查到」这类非答案。三个词特意不收：
+ *  「无」「没有」「暂无」是真答案，不是占位。ourAccess 的字段提示原文就是
+ *  「没有就写没有」——「我方接触不到任何人」是一条有决策含量的结论，
+ *  把它当没填会逼人去编一个用途出来，正好反了。
+ *  只在整字段等于这些词时算没填；「股权比例未知，但持股关系明确」是有信息的，不挡。 */
+const PLACEHOLDERS = ["未知", "不详", "不明", "待补充", "待确认", "待定", "无法判断", "判断不了", "没写", "n/a", "na", "null", "-", "—", "?", "？"];
+export function isPlaceholder(value: unknown) {
+  const text = String(value ?? "").trim().toLowerCase().replace(/[。.、,，;；!！]+$/, "");
+  return text.length === 0 || PLACEHOLDERS.includes(text);
+}
+
+/** 六道约束门。缺一道就不进入执行——判定逻辑与原版等价，
+ *  门 2 只是把「未知」这类占位词与空值同等对待（收紧，非放宽）。 */
 export function gateState(signal: Signal) {
-  const scope = Object.values(signal.constraints.scope).every(value => String(value ?? "").trim().length > 0);
+  const scope = Object.values(signal.constraints.scope).every(value => !isPlaceholder(value));
   const states = [
     signal.evidence.trim().length >= 20 && Boolean(signal.source.trim()),
     scope,
@@ -117,6 +135,31 @@ export function gateState(signal: Signal) {
 }
 
 export const GATE_LABELS = ["原始证据", "本地边界", "认识状态", "证伪 / 反例", "来源 / 时效", "专家签署"] as const;
+
+/**
+ * 门的人话版：把 states 翻译成「还差什么、去哪补」，不参与任何判定。
+ * gateState 是唯一判据，这里只读它的结果——加一条待办不会让任何东西过闸。
+ * 索引与 GATE_LABELS 严格对齐：改了顺序两边一起改。
+ */
+export const GATE_TODOS = [
+  { title: "贴上原始材料", ask: "原文至少 20 字，并写清哪儿来的", where: "材料" },
+  { title: "划清适用范围", ask: "哪几家公司、哪个市场、什么口径、哪段时间、我们能拿它做什么", where: "范围" },
+  { title: "标明这句话的性质", ask: "是看到的、推的、猜的，还是要采取的行动", where: "范围" },
+  { title: "写出什么情况下它不成立", ask: "以及目前最强的反面证据是什么", where: "反面" },
+  { title: "标明谁说的、什么时候过期", ask: "人际渠道还要写清谁在什么场合说的", where: "来源" },
+  { title: "签字确认", ask: "前五项齐了才能签；签完改任何一项都会自动撤签", where: "签字" },
+] as const;
+
+export type GateTodo = { index: number; title: string; ask: string; where: string };
+
+/** 未完成的门，按顺序给出。全过则返回空数组。 */
+export function missingGates(signal: Signal): GateTodo[] {
+  return gateState(signal).states.flatMap((ok, index) => {
+    if (ok) return [];
+    const todo = GATE_TODOS[index];
+    return [{ index, title: todo.title, ask: todo.ask, where: todo.where }];
+  });
+}
 
 type SignalSeed = Pick<Signal, "title" | "evidence" | "source" | "sourceUrl"> & {
   id?: string;

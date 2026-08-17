@@ -35,10 +35,10 @@ export function PeopleView({ people, signals, onAdd, onRemove, onOpenSignal }: {
   }
 
   return <>
-    <ViewHeader kicker="PEOPLE MAPPING" title="找对人，比找对话术更早一步" copy="人物档案是事实清单，不过闸；关于「谁能拍板、从哪条线更短」的判断仍然要走完六道门。这里只记公开职业事实与我方正当通路。" />
+    <ViewHeader kicker="第 2 步 / 看关系" title="找对人，比想好话术更靠前" copy="这里只记职务、汇报线和我们能走的正当通路——都是事实，记下来就行，不用判断。至于「谁能拍板、走哪条线更短」，那是判断，得去「下结论」里走完六项。" />
 
     <section className="people-intake">
-      <header><small>ROSTER / 公开职业事实</small><h3>补一个人</h3></header>
+      <header><small>只记公开的职业信息</small><h3>补一个人</h3></header>
       <div className="people-fields">{PERSON_FIELDS.map(field => <label key={field.key}>{field.label}
         <input value={draft[field.key]} onChange={event => setDraft({ ...draft, [field.key]: event.target.value })} placeholder={field.placeholder} />
       </label>)}</div>
@@ -72,8 +72,8 @@ export function PeopleView({ people, signals, onAdd, onRemove, onOpenSignal }: {
             <small>{[entry.person.department, entry.person.title].filter(Boolean).join(" · ") || "职务未标"} @ {entry.person.employer}</small>
           </div>
           <div className="person-badges">
-            <i className={entry.signedJudgments ? "good" : "watching"}>{entry.signedJudgments} 条已过闸判断</i>
-            {entry.openJudgments > 0 && <i>{entry.openJudgments} 条待补齐</i>}
+            <i className={entry.signedJudgments ? "good" : "watching"}>{entry.signedJudgments} 条判断已齐</i>
+            {entry.openJudgments > 0 && <i>{entry.openJudgments} 条还差项</i>}
           </div>
         </header>
 
@@ -82,7 +82,7 @@ export function PeopleView({ people, signals, onAdd, onRemove, onOpenSignal }: {
           <span>{entry.person.ourPath.trim() || "还没查——空白不等于没有通路"}</span>
         </div>
 
-        {!entry.signedJudgments && <p className="person-warn">还没有任何一条关于他的判断走完六道门。现在从他切入，凭的是印象不是判断。</p>}
+        {!entry.signedJudgments && <p className="person-warn">关于这个人，还没有一条判断补齐过。现在从他切入，凭的是印象。</p>}
 
         <button className="person-toggle" onClick={() => setExpanded(open ? "" : entry.person.id)}>
           {open ? "收起" : `展开 ${orgs.length} 个关联主体 / ${related.length} 条相关情报`}

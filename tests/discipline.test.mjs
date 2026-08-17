@@ -222,10 +222,75 @@ test("图布局稳定可复现", () => {
   assert.deepEqual(graph.buildGraph([signal], []).nodes, graph.buildGraph([signal], []).nodes);
 });
 
+// 画布是 overflow:hidden，坐标是百分比。所以落在 [0,1] 之外的节点不是"画歪了"，
+// 是点不到也看不到。环步长曾经写死 0.19，半径随节点数无上限地长：31 个节点时
+// 实测有 3 个整个掉在画布外面。这条盯的是"节点数变多不许把节点挤出画布"。
+test("节点数无论多少都落在画布里", () => {
+  for (const count of [2, 4, 7, 8, 15, 22, 31, 60, 140]) {
+    const signal = fullySigned();
+    signal.edges = [];
+    for (let i = 0; i < count; i += 2) {
+      signal.edges.push({ from: `公司 ${i}`, to: `公司 ${i + 1}`, relation: "equity", direction: "forward" });
+    }
+    const { nodes } = graph.buildGraph([signal], []);
+    assert.ok(nodes.length > 0, `${count} 个节点时图是空的`);
+    for (const node of nodes) {
+      // 留 0.02 余量给节点自己的半径（最大 30px）
+      assert.ok(node.x >= 0.02 && node.x <= 0.98, `${count} 节点时 ${node.id} 的 x=${node.x} 出界`);
+      assert.ok(node.y >= 0.02 && node.y <= 0.98, `${count} 节点时 ${node.id} 的 y=${node.y} 出界`);
+    }
+  }
+});
+
 test("本体是四维五关系，且换本体不动内核签名", () => {
   assert.equal(ontology.DIMENSIONS.length, 4);
   assert.equal(ontology.RELATIONS.length, 5);
   assert.equal(ontology.SCOPE_FIELDS.length, 5);
   assert.equal(core.initialWeights.length, ontology.DIMENSIONS.length);
   assert.deepEqual(Object.keys(core.emptyConstraints().scope).sort(), ontology.SCOPE_FIELDS.map(item => item.key).sort());
+});
+
+// ============ 人话层：missingGates 只翻译，不判定 ============
+// 新加的「还差什么」清单是六道门的 UI 出口。它必须严格是 gateState 的只读投影：
+// 一旦它自己算门，界面就有了第二套判据，而人只会相信界面上那套。
+
+test("missingGates 与 gateState 严格互补，条数永远对得上", () => {
+  const cases = [
+    core.makeSignal({ title: "空", evidence: "", source: "" }, core.initialWeights, RULES),
+    core.makeSignal({ title: "只有材料", evidence: "这是一段足够长的原始依据，超过二十个字，用来单独放行第一道门。", source: "公告" }, core.initialWeights, RULES),
+    fullySigned(),
+    fullySigned({ signedOff: false }),
+  ];
+  for (const signal of cases) {
+    const gate = core.gateState(signal);
+    const todos = core.missingGates(signal);
+    assert.equal(todos.length, 6 - gate.passed, "待办条数必须等于未过门数");
+    // 每条待办的 index 必须真的对应一个没过的门，不能凭空造。
+    for (const todo of todos) assert.equal(gate.states[todo.index], false, `门 ${todo.index} 已过，不该出现在待办里`);
+    assert.equal(todos.length === 0, gate.executable, "清单为空必须等价于六道门全过");
+  }
+});
+
+test("待办清单里每一条都有人话标题与追问，索引与 GATE_LABELS 对齐", () => {
+  assert.equal(core.GATE_TODOS.length, core.GATE_LABELS.length, "人话表必须与门标签一一对应");
+  for (const todo of core.GATE_TODOS) {
+    assert.ok(todo.title.trim().length > 0, "待办必须有标题");
+    assert.ok(todo.ask.trim().length > 0, "待办必须写清要补什么");
+    assert.ok(todo.where.trim().length > 0, "待办必须指明去哪补");
+  }
+  // 人话层不许出现"跳过""忽略""稍后"这类给绕过留口子的词。
+  const text = JSON.stringify(core.GATE_TODOS);
+  for (const word of ["跳过", "忽略", "免", "可选", "非必"]) {
+    assert.ok(!text.includes(word), `待办文案不得暗示可以绕过：${word}`);
+  }
+});
+
+test("补齐待办不会让任何一条自己签字", () => {
+  // 把前五道门全填满，第六道仍必须靠人点签字。
+  const scope = {};
+  for (const field of ontology.SCOPE_FIELDS) scope[field.key] = "已填写";
+  const unsigned = fullySigned({ signedOff: false });
+  assert.equal(core.missingGates(unsigned).length, 1, "只差签字");
+  assert.equal(core.missingGates(unsigned)[0].index, 5, "差的必须是最后一道");
+  assert.equal(core.gateState(unsigned).executable, false, "没签字就不能放行");
 });

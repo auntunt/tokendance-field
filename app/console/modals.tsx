@@ -51,7 +51,7 @@ export function ModelModal({ model, setModel, onClose }: { model: ModelConfig; s
 
 export function AIReview({ analysis, onAnalyze, analyzing, onAdopt }: { analysis?: ModelAnalysis | null; onAnalyze: () => void; analyzing: boolean; onAdopt: () => void }) {
   if (!analysis) return <section className="ai-review empty">
-    <div><small>MODEL AS CRITIC / NEVER THE SIGNER</small><h3>让模型找主体边界、找反例、找证伪条件。</h3><p>模型可以提出草稿，但不能自动通过约束门，也不能替专家签署。</p></div>
+    <div><small>模型只起草，不签字</small><h3>让模型把适用范围、反面情况和最强反证都写出来。</h3><p>它会填满六项里的五项。签字永远只能由你点——这条是代码写死的。</p></div>
     <button className="primary-action" disabled={analyzing} onClick={onAnalyze}>{analyzing ? "正在拷问…" : "运行模型拷问"}</button>
   </section>;
   return <section className="ai-review">

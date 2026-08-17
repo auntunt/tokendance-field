@@ -54,16 +54,16 @@ export function RelationGraph({ signals, onOpenSignal }: { signals: Signal[]; on
   }
 
   return <>
-    <ViewHeader kicker="ENTERPRISE RELATION GRAPH / EDGE-LEVEL PROVENANCE" title="图上没有无源之边" copy="每条边的颜色只反映支撑它的情报过了几道约束门。点边看原始出处，未过闸的关系画得出来，但不会被当成事实。" />
+    <ViewHeader kicker="第 2 步 / 看关系" title="谁和谁连着" copy="每条线背后都挂着原始材料，点线就能看到出处。材料还没补齐的关系照样画出来，只是画成虚线——能看，但别当成已经确认的事。" />
     <div className="relation-filters">
       <span>关系类型</span>
       {RELATIONS.map(item => <button key={item.id} className={filter.length === 0 || filter.includes(item.id) ? "on" : ""} onClick={() => toggle(item.id)}><i style={{ background: RELATION_COLOR[item.id] }} />{item.label}</button>)}
       {filter.length > 0 && <button className="clear" onClick={() => { setFilter([]); setEdge(null); }}>显示全部</button>}
-      <em>{graph.nodes.length} 主体 · {graph.edges.length} 关系 · {graph.edges.filter(item => item.executable).length} 条已过闸</em>
+      <em>{graph.nodes.length} 家公司 · {graph.edges.length} 条关系 · 其中 {graph.edges.filter(item => item.executable).length} 条已确认</em>
     </div>
     <div className="relation-stage">
       <div className="relation-canvas" ref={canvas}>
-        {graph.edges.length === 0 && <div className="relation-empty">还没有带关系边的情报。人工录入时填写“关系边”，或让供给管线写入候选关系。</div>}
+        {graph.edges.length === 0 && <div className="relation-empty">图上还没有关系。去「收集」贴一段原文，机器会把「谁和谁有什么关系」挑出来；也可以手工录一条。</div>}
         <svg viewBox="0 0 100 100" preserveAspectRatio="none">
           {graph.edges.map(item => {
             const from = graph.nodes.find(candidate => candidate.id === item.from);
@@ -87,46 +87,47 @@ export function RelationGraph({ signals, onOpenSignal }: { signals: Signal[]; on
         {graph.nodes.map(item => {
           const size = nodeSize(item.degree);
           const related = !node || item.id === node || focusEdges.some(link => link.from === item.id || link.to === item.id);
-          return <button key={item.id} className={`relation-node ${item.id === node ? "selected" : ""}`}
+          const showLabel = item.id === node || item.degree >= 2 || graph.nodes.length <= 12;
+          return <button key={item.id} title={item.id} className={`relation-node ${item.id === node ? "selected" : ""} ${showLabel ? "" : "minor"}`}
             style={{ left: `${item.x * 100}%`, top: `${item.y * 100}%`, width: size, height: size, opacity: related ? 1 : .22 }}
             onClick={() => { setNode(current => current === item.id ? "" : item.id); setEdge(null); }}>
-            <label>{item.id}</label>
+            {showLabel && <label>{item.id}</label>}
           </button>;
         })}
       </div>
       <aside className="relation-inspector">
         {edge ? <>
-          <small>EDGE PROVENANCE / {edge.relation.toUpperCase()}</small>
+          <small>这条关系</small>
           <h2>{edge.from} {edge.direction === "mutual" ? "↔" : "→"} {edge.to}</h2>
-          <div className="inspector-stat"><span>关系类型</span><b>{relationLabel(edge.relation)}</b></div>
-          <div className="inspector-stat"><span>支撑情报</span><b>{edge.signalIds.length}</b></div>
-          <div className="inspector-stat"><span>最高过闸</span><b>{edge.bestGate}/6</b></div>
-          <div className="inspector-stat"><span>可执行</span><b className={edge.executable ? "good" : "watching"}>{edge.executable ? "是" : "否"}</b></div>
-          <h3>原始出处</h3>
+          <div className="inspector-stat"><span>什么关系</span><b>{relationLabel(edge.relation)}</b></div>
+          <div className="inspector-stat"><span>几条材料支撑</span><b>{edge.signalIds.length}</b></div>
+          <div className="inspector-stat"><span>最好的那条还差</span><b>{6 - edge.bestGate} 项</b></div>
+          <div className="inspector-stat"><span>能不能用</span><b className={edge.executable ? "good" : "watching"}>{edge.executable ? "可以用" : "还不行"}</b></div>
+          <h3>材料从哪来</h3>
           <div className="edge-sources">{evidence.map(item => { const gate = gateState(item); return <button key={item.id} onClick={() => onOpenSignal(item.id)}>
             <b>{item.title}</b>
-            <span>{item.source} · {gate.passed}/6 · {item.constraints.probability}%</span>
+            <span>{item.source} · {gate.executable ? "六项已齐" : `还差 ${6 - gate.passed} 项`}</span>
             {item.sourceUrl && <em>{item.sourceUrl}</em>}
           </button>; })}</div>
         </> : node ? <>
-          <small>ENTITY / DEGREE {graph.nodes.find(item => item.id === node)?.degree ?? 0}</small>
+          <small>这家公司 · {graph.nodes.find(item => item.id === node)?.degree ?? 0} 条关系</small>
           <h2>{node}</h2>
-          <h3>直接关系</h3>
+          <h3>直接连着谁</h3>
           <div className="edge-sources">{focusEdges.map(item => <button key={item.key} onClick={() => setEdge(item)}>
             <b>{item.from === node ? `→ ${item.to}` : `← ${item.from}`}</b>
-            <span>{relationLabel(item.relation)} · {item.bestGate}/6 · {item.signalIds.length} 条情报</span>
-          </button>)}{!focusEdges.length && <span className="muted-note">当前筛选下没有边</span>}</div>
+            <span>{relationLabel(item.relation)} · {item.bestGate === 6 ? "已确认" : `还差 ${6 - item.bestGate} 项`} · {item.signalIds.length} 条材料</span>
+          </button>)}{!focusEdges.length && <span className="muted-note">当前筛选下没有关系</span>}</div>
         </> : <>
-          <small>READ THE GRAPH</small>
-          <h2>点节点看邻居，点边看出处</h2>
+          <small>怎么看这张图</small>
+          <h2>点公司看它连着谁，点线看材料从哪来</h2>
           <div className="legend-lines">
-            <span><i style={{ background: "#41c6cc" }} /><b>实线青</b>六道门全过，可进入行动</span>
-            <span><i style={{ background: "#ffad21" }} /><b>虚线黄</b>过 4–5 道，还差关键约束</span>
-            <span><i style={{ background: "rgba(126,148,170,.42)" }} /><b>虚线灰</b>过闸不足，仅作候选线索</span>
+            <span><i style={{ background: "#41c6cc" }} /><b>青色实线</b>材料齐了，这条关系可以用</span>
+            <span><i style={{ background: "#ffad21" }} /><b>黄色虚线</b>差一两项，快能用了</span>
+            <span><i style={{ background: "rgba(126,148,170,.42)" }} /><b>灰色虚线</b>还差得多，先当线索看</span>
           </div>
-          <p className="muted-note">箭头只表示方向：单箭头是单向关系，两端都有箭头是互相关系。方向不改变可信度，颜色仍然只看过闸数。</p>
-          <h3>为什么不按“置信度”上色</h3>
-          <p>置信度可以被自信的措辞抬高，过闸数不行——它数的是有没有写边界、证伪条件、来源谱系和签署。</p>
+          <p className="muted-note">箭头只表示方向：单箭头是一方对另一方，两头都有箭头是互相。方向不影响颜色。</p>
+          <h3>颜色为什么不看「有多可信」</h3>
+          <p>可信度是主观打的分，说得越肯定就越高。这里的颜色只数一件事：适用范围、反面情况、来源时效、签字这几项写了没有。写了就是写了，措辞再肯定也变不出来。</p>
         </>}
       </aside>
     </div>

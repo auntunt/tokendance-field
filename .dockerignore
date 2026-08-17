@@ -14,3 +14,13 @@ tests
 .test-build
 examples
 tsconfig.tsbuildinfo
+# 报告产物不进镜像：它们是每天重跑的数据，进了镜像就等于「换数据要重新构建」。
+# 线上从 volume 里读（FIELD_REPORTS_DIR=/reports），传新报告只要 docker cp。
+reports
+shots
+.report-build
+.discover-cache
+.filing-cache
+demo
+audit
+.vinext

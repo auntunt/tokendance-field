@@ -13,7 +13,28 @@
 # testing
 /coverage
 /.test-build/
+/.report-build/
 /data/
+
+# 生成的报告与快照。报告是产物不是源码；快照会随每次重跑增长。
+# 要发给别人就直接发 reports/ 里那个 HTML 文件，不必进版本库。
+/reports/
+
+# 抓取缓存。存的是年报 PDF 正文、委托书原始 HTML 之类的下载件，
+# 单个几 MB 且随公司数增长；删掉只是下次重跑要重新下载，不丢信息。
+/.filing-cache/
+/.discover-cache/
+
+# 本地 SQLite 库。是 data/ 之外另一处落盘位置，里面有抓下来的语料与抽取结果。
+# db/ 目录本身要进版本库（index.ts / schema.ts 是源码），只忽略库文件。
+*.sqlite
+*.sqlite3
+*.db
+
+# 审计与诊断的中间产物。脚本进版本库，跑出来的报告不进——每次重跑内容都不同。
+/audit/*.txt
+/audit/*.json
+/audit/report.html
 
 # next.js
 /.next/

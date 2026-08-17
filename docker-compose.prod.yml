@@ -10,10 +10,15 @@ services:
       PORT: 8800
       HOSTNAME: 0.0.0.0
       DATABASE_PATH: /data/tokendance-field.sqlite
+      # 报告从 volume 读，不从镜像读。报告是每天重跑的数据，
+      # 打进镜像就意味着「换一份数据要重新构建、重新推 300MB」。
+      # 传新报告：docker cp reports/xxx.html tokendance-field-1:/reports/
+      FIELD_REPORTS_DIR: /reports
     ports:
       - "127.0.0.1:8021:8800"
     volumes:
       - tokendance_field_data:/data
+      - tokendance_field_reports:/reports
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8800/api/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
       interval: 30s
@@ -24,3 +29,5 @@ services:
 volumes:
   tokendance_field_data:
     name: tokendance_field_data
+  tokendance_field_reports:
+    name: tokendance_field_reports
