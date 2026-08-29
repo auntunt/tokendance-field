@@ -57,9 +57,9 @@ export const RELATIONS: Array<{ id: RelationId; label: string; words: string[]; 
   },
   {
     id: "personnel",
-    label: "人事交叉",
-    words: ["任职", "兼任", "董事", "高管", "离职", "挖角", "团队"],
-    hint: "同一批人同时出现在哪些主体",
+    label: "人事变动",
+    words: ["任职", "兼任", "董事", "高管", "离职", "挖角", "团队", "换帅", "上任"],
+    hint: "谁离开了、谁上任了、同一批人同时出现在哪些主体",
   },
   {
     id: "license",

@@ -11,7 +11,7 @@
 // 快照存在 reports/history/ 下。下次重跑时读最近一份来做 diff——
 // 「本次更新」那一节靠它，没有快照就没有变更页，只能显示「首次生成」。
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -22,6 +22,14 @@ const DEFAULT_CORPUS = "/Users/auntlee/Desktop/workspace/同行信息查找/dist
 function arg(name, fallback) {
   const index = process.argv.indexOf(name);
   return index >= 0 && process.argv[index + 1] ? process.argv[index + 1] : fallback;
+}
+
+function shanghaiDate(date) {
+  const parts = new Intl.DateTimeFormat("en", {
+    timeZone: "Asia/Shanghai", year: "numeric", month: "2-digit", day: "2-digit",
+  }).formatToParts(date);
+  const get = type => parts.find(part => part.type === type)?.value || "";
+  return `${get("year")}-${get("month")}-${get("day")}`;
 }
 
 // 和 tests/build-kernel.mjs 用同一个编译方式：直接调真实 TS 函数，
@@ -55,8 +63,11 @@ if (!skipCorpus) {
     const raw = JSON.parse(readFileSync(corpusPath, "utf8"));
     const companies = Array.isArray(raw) ? raw : raw.companies || [];
     network = raw.network || undefined;
-    profiles.push(...importer.importCorpus(companies, today));
-    console.log(`语料：${companies.length} 家 ← ${corpusPath}${network ? `；知识图谱 ${network.nodes?.length || 0} 节点 / ${network.links?.length || 0} 边` : ""}`);
+    // 静态语料的“取件日”必须跟着文件本身走，不能每次重跑都冒充今天刚核验。
+    // 如有更准确的人工口径，可用 --corpus-as-of YYYY-MM-DD 显式覆盖。
+    const corpusAsOf = arg("--corpus-as-of", shanghaiDate(statSync(corpusPath).mtime));
+    profiles.push(...importer.importCorpus(companies, corpusAsOf));
+    console.log(`语料：${companies.length} 家（材料截至 ${corpusAsOf}）← ${corpusPath}${network ? `；知识图谱 ${network.nodes?.length || 0} 节点 / ${network.links?.length || 0} 边` : ""}`);
   } else {
     console.log(`语料不在 ${corpusPath}，本次只出名单部分`);
   }

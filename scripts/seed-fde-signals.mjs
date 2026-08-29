@@ -9,16 +9,20 @@
 //     --history reports/history/2026-08-16.json \
 //     --base https://www.field.tokendance.cool \
 //     --user admin --password demo1234 --enrich 6
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 const args = new Map();
 for (let i = 2; i < process.argv.length; i += 2) args.set(process.argv[i], process.argv[i + 1]);
-const historyPath = resolve(process.cwd(), args.get("--history") || "reports/history/2026-08-16.json");
+const today = new Date().toISOString().slice(0, 10);
+const historyPath = resolve(process.cwd(), args.get("--history") || `reports/history/${today}.json`);
+const curatedPath = resolve(process.cwd(), args.get("--curated") || "scripts/curated-signals.json");
 const base = args.get("--base") || "http://127.0.0.1:3000";
 const user = args.get("--user") || "admin";
 const password = args.get("--password") || "";
 const enrichLimit = Number(args.get("--enrich") || 0);
+const mode = args.get("--mode") || "merge";
+const dryRun = args.get("--dry-run") === "true";
 
 const auth = `Basic ${Buffer.from(`${user}:${password}`).toString("base64")}`;
 const profiles = JSON.parse(readFileSync(historyPath, "utf8"));
@@ -40,6 +44,18 @@ function splitNames(value) {
     .filter(n => n.length >= 2 && !/^(未披露|未公开|未核实|无|暂无|多家|若干)$/.test(n));
 }
 
+function usableSource(entry, grades = ["statutory", "independent"]) {
+  if (!entry?.sourceUrl || !grades.includes(entry.grade)) return false;
+  try {
+    const url = new URL(entry.sourceUrl);
+    return ["http:", "https:"].includes(url.protocol)
+      && url.hostname.includes(".")
+      && !/[\s（）。“”"']/u.test(entry.sourceUrl);
+  } catch {
+    return false;
+  }
+}
+
 /** 持股字段是「名字 + 百分比」的长文本，不能用逗号硬拆。
  *  按百分号往前找最近的公司名，避免把「4.4%（3 持有 Appian」当名字。 */
 function parseHolderNames(value) {
@@ -49,7 +65,9 @@ function parseHolderNames(value) {
   let m;
   while ((m = pattern.exec(text)) !== null && names.length < 4) {
     const name = normName(m[1]);
-    if (name && !/^(\d|股份|口径|截至)/.test(name) && name.length >= 2) names.push(name);
+    // 这个分支生成的是“5% 以上股东”关系。低于 5% 的披露项即使出现在同一张表里，
+    // 也不能被画成 5%+ 持股关系。
+    if (Number(m[2]) >= 5 && name && !/^(\d|股份|口径|截至)/.test(name) && name.length >= 2) names.push(name);
   }
   return names;
 }
@@ -104,14 +122,15 @@ function push(list, signal, max) {
 
 function makeSignals() {
   const out = [];
-  const today = new Date().toISOString().slice(0, 10);
   let added = { investor: 0, holder: 0, customer: 0, fde: 0 };
 
   for (const profile of profiles) {
     // 1) 投资方关系：investor -> company
     const inv = factValue(profile, "funding", "investors");
-    if (inv && added.investor < 14) {
-      for (const investor of splitNames(inv.value).slice(0, 2)) {
+    // 静态语料只有“公司级来源”，没有“融资字段级来源”。即使公司资料页里有链接，
+    // 也不能据此证明某一家投资方，所以不再从旧语料生成投资边；最新融资只走人工核验清单。
+    if (inv && profile.origin !== "fde_round3 / dist/data.json" && usableSource(inv) && added.investor < 14) {
+      for (const investor of splitNames(inv.value).slice(0, Math.min(2, 14 - added.investor))) {
         const signal = {
           id: `seed-inv-${profile.id}-${added.investor}`,
           title: `${profile.name} · 投资方 ${investor}`,
@@ -130,8 +149,8 @@ function makeSignals() {
 
     // 2) 主要股东关系：holder -> company
     const holders = factValue(profile, "shareholders", "majorHolders");
-    if (holders && added.holder < 10) {
-      const holderNames = parseHolderNames(holders.value).slice(0, 2);
+    if (usableSource(holders) && added.holder < 10) {
+      const holderNames = parseHolderNames(holders.value).slice(0, Math.min(2, 10 - added.holder));
       for (const holder of holderNames) {
         const signal = {
           id: `seed-holder-${profile.id}-${added.holder}`,
@@ -152,15 +171,15 @@ function makeSignals() {
     // 3) 客户关系：company -> customer。只用 business.customers（明确客户名单），
     //    onsiteModel 是交付项目描述，不是客户名单，不能混进来。
     const customers = factValue(profile, "business", "customers");
-    if (customers && added.customer < 12) {
+    if (usableSource(customers) && added.customer < 12) {
       const names = customers.value.split(/[、，,；;]/)
         .map(normName)
         .map(n => n.split(/\s+/)[0] || n)
         .filter(n => n.length >= 2 && n.length <= 18
           && !/[（(]|[0-9]{3,}|[元万元%]|中标|成交|预算|公示|招标|采购方|金额|计费|平台|方案|项目|交付工业|为央国企|等\s*$|^\d|\*\*|—/.test(n)
-          && !/^(计费|公开招标|成交|预算|公示|采购方|中标|累计|来源|无|暂无|政法|教育|养老|医疗|金融|零售|制造|能源|建筑|物流|农业)$/.test(n)
+          && !/^(AI|计费|公开招标|成交|预算|公示|采购方|中标|累计|来源|无|暂无|政法|教育|养老|医疗|金融|零售|制造|能源|能源企业|泛园区|建筑|物流|农业)$/.test(n)
           && (/(集团|公司|股份|科技|智能|银行|纸业|电气|汽车|证券|基金|研究院|大学|学院|医院|平台|工作室)/.test(n) || (n.length >= 2 && n.length <= 4)))
-        .slice(0, 2);
+        .slice(0, Math.min(2, 12 - added.customer));
       for (const customer of names) {
         const signal = {
           id: `seed-cust-${profile.id}-${added.customer}`,
@@ -183,7 +202,7 @@ function makeSignals() {
   for (const profile of profiles) {
     if (added.fde >= 6) break;
     const fde = factValue(profile, "fde", "fdeNaming") || factValue(profile, "fde", "onsiteModel");
-    if (!fde || !profile.watchlist) continue;
+    if (!usableSource(fde) || !profile.watchlist) continue;
     const signal = {
       id: `seed-fde-${profile.id}`,
       title: `${profile.name} · FDE 模式证据`,
@@ -214,13 +233,34 @@ async function api(path, options = {}) {
 }
 
 const generated = makeSignals();
+const curatedRaw = existsSync(curatedPath) ? JSON.parse(readFileSync(curatedPath, "utf8")) : { signals: [], dropIds: [] };
+const curatedSignals = Array.isArray(curatedRaw) ? curatedRaw : Array.isArray(curatedRaw.signals) ? curatedRaw.signals : [];
+const dropIds = new Set(Array.isArray(curatedRaw.dropIds) ? curatedRaw.dropIds.map(String) : []);
+for (const signal of curatedSignals) {
+  if (!signal?.id || !signal?.title || !signal?.sourceUrl || !Array.isArray(signal.edges)) {
+    throw new Error(`人工核验信号格式不完整：${JSON.stringify(signal).slice(0, 180)}`);
+  }
+}
 const current = await api("/api/workspace");
 const existingSignals = Array.isArray(current.signals) ? current.signals : [];
-const existingKeys = new Set(existingSignals.map(s => `${s.title}||${s.source}`));
-const newSignals = generated.filter(s => !existingKeys.has(`${s.title}||${s.source}`));
-console.log(`已有 ${existingSignals.length} 条，新增 ${newSignals.length} 条`);
-
-const merged = [...existingSignals, ...newSignals];
+const managed = signal => /^seed-fde-|^scheduler-|^refresh-/.test(String(signal.origin || "")) || String(signal.id || "").startsWith("curated-");
+const preserved = mode === "replace-managed"
+  ? existingSignals.filter(signal => !managed(signal) && !dropIds.has(String(signal.id)))
+  : existingSignals.filter(signal => !dropIds.has(String(signal.id)));
+const incoming = [...generated, ...curatedSignals];
+const byId = new Map(preserved.map(signal => [String(signal.id), signal]));
+for (const signal of incoming) byId.set(String(signal.id), signal);
+const merged = [...byId.values()];
+const newSignals = incoming.filter(signal => !existingSignals.some(old => old.id === signal.id));
+console.log(`已有 ${existingSignals.length} 条，保留 ${preserved.length} 条，刷新写入 ${incoming.length} 条，合计 ${merged.length} 条`);
+if (dryRun) {
+  const edgeCount = merged.reduce((sum, signal) => sum + (Array.isArray(signal.edges) ? signal.edges.length : 0), 0);
+  console.log(`预演完成：${merged.length} 条信号 / ${edgeCount} 条关系；未写入工作区`);
+  if (args.get("--details") === "true") {
+    for (const signal of merged) console.log(`- ${signal.title}｜${signal.source}｜${signal.sourceUrl}`);
+  }
+  process.exit(0);
+}
 const put = async label => {
   await api("/api/workspace", {
     method: "PUT",

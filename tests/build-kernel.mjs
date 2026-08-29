@@ -17,6 +17,8 @@ export function buildKernel() {
     "lib/fde-roster.ts", "lib/report-data.ts", "lib/report-html.ts",
     "lib/report-judgment.ts",
     "lib/holder-table.ts", "lib/query-intake.ts", "lib/company-resolver.ts",
+    "lib/signal-date.ts", "lib/scheduler-policy.ts",
+    "lib/research/types.ts", "lib/research/provider.ts", "lib/research/fetch-document.ts", "lib/research/repository.ts",
     "--outDir", ".test-build", "--module", "commonjs", "--moduleResolution", "node10",
     "--target", "es2022", "--strict", "--resolveJsonModule", "--esModuleInterop",
   ], { cwd: root, stdio: "pipe" });

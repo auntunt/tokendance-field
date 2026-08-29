@@ -20,6 +20,8 @@ import { PeopleView } from "./console/people-view";
 import { PersonNode } from "../lib/people";
 import { Sandbox } from "./console/sandbox";
 import { EmptyField } from "./console/shared";
+import { compareSignalEventDate, signalEventDateLabel } from "../lib/signal-date";
+import { ResearchOverview } from "./console/research-overview";
 
 /**
  * 导航只有三段，对应实际要干的三件事：收集 → 看关系 → 下结论。
@@ -34,11 +36,11 @@ import { EmptyField } from "./console/shared";
  */
 type Section = "collect" | "relations" | "judgment";
 const SECTIONS: Array<{ id: Section; label: string; hint: string }> = [
-  { id: "collect", label: "收集", hint: "贴材料、抓链接、录听到的事" },
-  { id: "relations", label: "看关系", hint: "谁和谁连着，主体与人物" },
-  { id: "judgment", label: "下结论", hint: "这条够不够硬，能不能用" },
+  { id: "collect", label: "检索与采集", hint: "RESEARCH / SOURCES" },
+  { id: "relations", label: "关系网络", hint: "ENTITIES / EDGES" },
+  { id: "judgment", label: "证据判断", hint: "CLAIMS / GATES" },
 ];
-type RelationTab = "图谱" | "版图" | "人物" | "按类型";
+type RelationTab = "关联图谱" | "覆盖版图" | "人物动态" | "关系分类";
 type JudgmentTab = "逐条判断" | "全部情报" | "校准记录" | "推演" | "设置";
 /**
  * 「收集」里的三种入口，区别在于你手上已经有什么：
@@ -62,7 +64,7 @@ export function SignalConsole() {
     const value = new URLSearchParams(window.location.search).get("tab");
     return value === "查情报" || value === "贴材料" || value === "FDE 查询包" ? value : "查情报";
   });
-  const [relationTab, setRelationTab] = useState<RelationTab>("图谱");
+  const [relationTab, setRelationTab] = useState<RelationTab>("关联图谱");
   const [judgmentTab, setJudgmentTab] = useState<JudgmentTab>("逐条判断");
   /** 约束面板当前展开的分组。放在这里而不是面板内部：从别的视图跳过来时要能直接指定展开哪一组。 */
   const [openGroup, setOpenGroup] = useState("");
@@ -90,6 +92,7 @@ export function SignalConsole() {
   const [analyzing, setAnalyzing] = useState(false);
   const [model, setModel] = useState<ModelConfig>({ provider: "compatible", model: "", endpoint: "", apiKey: "" });
   const importer = useRef<HTMLInputElement>(null);
+  const mainScroller = useRef<HTMLElement>(null);
 
 
   useEffect(() => {
@@ -120,6 +123,10 @@ export function SignalConsole() {
     return () => window.clearTimeout(timer);
   }, [weights, signals, feedback, snapshots, people, workspaceReady]);
   useEffect(() => { if (!toast) return; const timer = window.setTimeout(() => setToast(""), 2800); return () => window.clearTimeout(timer); }, [toast]);
+  useEffect(() => {
+    // 主导航切换的是完整工作面；回到顶部可以避免浏览器的滚动恢复把新面板的标题藏起来。
+    mainScroller.current?.scrollTo({ top: 0 });
+  }, [section]);
 
   const selected = signals.find(signal => signal.id === selectedId) || signals[0];
   const visibleSignals = useMemo(() => {
@@ -364,11 +371,14 @@ export function SignalConsole() {
   const readyForSign = signals.filter(signal => gateState(signal).passed === 5).length;
 
   return <main className="console-app core-app field-app flat-nav">
+    <a className="skip-link" href="#main-workspace">跳到主要内容</a>
     <header className="console-topbar">
-      <button className="console-brand" onClick={() => setSection("collect")}><span>TD</span><b>情报台</b></button>
+      <button className="console-brand" onClick={() => setSection("collect")} aria-label="回到研究工作台">
+        <span>F</span><span className="brand-copy"><b>FIELD</b><small>EVIDENCE OS</small></span>
+      </button>
       <nav className="section-nav">{SECTIONS.map((item, index) => <button key={item.id}
         className={section === item.id ? "active" : ""} onClick={() => setSection(item.id)}>
-        <b>{index + 1}. {item.label}</b><span>{item.hint}</span>
+        <i>{String(index + 1).padStart(2, "0")}</i><span><b>{item.label}</b><small>{item.hint}</small></span>
         {item.id === "judgment" && pendingCount > 0 && <em className="nav-badge">{pendingCount}</em>}
       </button>)}</nav>
       <div className="console-search">
@@ -377,24 +387,30 @@ export function SignalConsole() {
         {query && <button className="search-clear" onClick={() => setQuery("")} aria-label="清空搜索">×</button>}
       </div>
       <div className="console-actions">
-        <button className="ghost-action" onClick={() => setShowModel(true)}>模型{model.model ? " ✓" : ""}</button>
+        <button className="ghost-action model-action" onClick={() => setShowModel(true)}><i />模型连接{model.model ? " · 已配置" : ""}</button>
         {/* 情报报告不进三段导航：那三段是「要做的事」（收集→看关系→下结论，六道门那条线），
             报告是另一条线的产出——不过门、按来源分级呈现。放进 SECTIONS 会让人以为
             它是流程的第四步。用 <a> 整页跳转而不是 router.push：那是一份独立 HTML 文档，
             不是 React 路由里的页面。target 另开一页，免得看完报告要退回来重新登录。 */}
-        <a className="ghost-action" href="/report" target="_blank" rel="noopener">情报报告 ↗</a>
-        <button className="ghost-action" onClick={() => importer.current?.click()}>导入</button>
-        <button className="ghost-action" onClick={exportData}>导出</button>
-        {/* 整页跳转而不是 router.push：票据是 httpOnly cookie，客户端路由不重新过 proxy。 */}
-        <button className="ghost-action" onClick={async () => {
-          await fetch("/api/login", { method: "DELETE" });
-          window.location.assign("/login");
-        }}>登出</button>
+        <a className="ghost-action report-action" href="/report" target="_blank" rel="noopener">打开情报报告 ↗</a>
+        <details className="console-more">
+          <summary aria-label="更多操作">•••</summary>
+          <div>
+            <button onClick={() => importer.current?.click()}>导入工作区</button>
+            <button onClick={exportData}>导出工作区</button>
+            {/* 整页跳转而不是 router.push：票据是 httpOnly cookie，客户端路由不重新过 proxy。 */}
+            <button onClick={async () => {
+              await fetch("/api/login", { method: "DELETE" });
+              window.location.assign("/login");
+            }}>退出登录</button>
+          </div>
+        </details>
         <input ref={importer} className="file-input" type="file" accept="application/json" onChange={importData} />
       </div>
     </header>
-    <section className="console-main wide">
+    <section className="console-main wide" id="main-workspace" ref={mainScroller}>
       {section === "collect" && <>
+        <ResearchOverview signalCount={signals.length} edgeCount={edgeCount} />
         {signals.length > 0 && <LatestSignals signals={signals} onOpen={id => openJudgment(id)} />}
         <TabBar tabs={["查情报", "贴材料", "FDE 查询包"] as CollectTab[]} active={collectTab} onPick={setCollectTab}
           note="一句话用「查情报」，已有材料用「贴材料」，不知道下一家查谁用「FDE 查询包」。出来的候选走同一条判断线。" />
@@ -409,12 +425,12 @@ export function SignalConsole() {
       </>}
 
       {section === "relations" && <>
-        <TabBar tabs={["图谱", "版图", "人物", "按类型"] as RelationTab[]} active={relationTab} onPick={setRelationTab}
-          note="这一段只看主体怎么连着，不判断对错，也不需要签字。" />
-        {relationTab === "图谱" && <RelationGraph signals={signals} onOpenSignal={id => openJudgment(id)} />}
-        {relationTab === "版图" && <MarketMapView signals={signals} people={people.map(person => person.name)} onOpenSignal={id => openJudgment(id)} />}
-        {relationTab === "人物" && <PeopleView people={people} signals={signals} onAdd={addPerson} onRemove={removePerson} onOpenSignal={signal => openJudgment(signal.id)} />}
-        {relationTab === "按类型" && <RelationClusters topics={relationSummary} onOpen={signal => openJudgment(signal.id)} />}
+        <TabBar tabs={["关联图谱", "覆盖版图", "人物动态", "关系分类"] as RelationTab[]} active={relationTab} onPick={setRelationTab}
+          note="这里只画关系，不下结论：投资、供货、竞争、人事、授权。" />
+        {relationTab === "关联图谱" && <RelationGraph signals={signals} onOpenSignal={id => openJudgment(id)} />}
+        {relationTab === "覆盖版图" && <MarketMapView signals={signals} people={people.map(person => person.name)} onOpenSignal={id => openJudgment(id)} />}
+        {relationTab === "人物动态" && <PeopleView people={people} signals={signals} onAdd={addPerson} onRemove={removePerson} onOpenSignal={signal => openJudgment(signal.id)} />}
+        {relationTab === "关系分类" && <RelationClusters topics={relationSummary} onOpen={signal => openJudgment(signal.id)} />}
       </>}
 
       {section === "judgment" && <>
@@ -461,26 +477,59 @@ function TabBar<T extends string>({ tabs, active, onPick, note }: {
 }
 
 /** 首页情报脉冲：有数据时显示最近几条，不让首页只有输入框。 */
+function newsHeadline(signal: Signal): string {
+  const edge = signal.edges?.[0];
+  if (!edge) return signal.title;
+  const label = relationLabel(edge.relation);
+  if (edge.relation === "equity") return `${edge.from} 投资 ${edge.to}`;
+  if (edge.relation === "supply") return `${edge.from} → ${edge.to} · 供货交付`;
+  if (edge.relation === "personnel") return `${edge.from} ↔ ${edge.to} · 人事关联`;
+  if (edge.relation === "compete") return `${edge.from} × ${edge.to} · 竞争`;
+  if (edge.relation === "license") return `${edge.from} → ${edge.to} · ${label}`;
+  return `${edge.from} → ${edge.to} · ${label}`;
+}
+
+/** 首页情报流：事件日期第一优先；同日材料再按过闸进度与来源强度排序。 */
 function LatestSignals({ signals, onOpen }: { signals: Signal[]; onOpen: (id: string) => void }) {
-  const latest = signals.slice(0, 6);
-  const ready = signals.filter(signal => gateState(signal).passed === 5).length;
-  const pending = signals.length - signals.filter(signal => gateState(signal).executable).length;
+  const ranked = [...signals].sort((a, b) => {
+    const byEventDate = compareSignalEventDate(a, b);
+    if (byEventDate) return byEventDate;
+    const score = (signal: Signal) => {
+      const gate = gateState(signal);
+      let value = gate.passed * 120;
+      if (gate.passed === 5) value += 200; // 只差签字，最接近可行动
+      if (gate.executable) value += 300;
+      if (signal.constraints.sourceType === "independent") value += 40;
+      value += Math.min(100, Number(signal.candidateScore) || 0);
+      value += (signal.edges?.length || 0) * 10;
+      return value;
+    };
+    return score(b) - score(a) || String(b.createdAt).localeCompare(String(a.createdAt));
+  }).slice(0, 8);
+  const latest = ranked;
+
   return <section className="latest-strip">
     <header>
-      <div><small className="aside-kicker">情报台现状</small><h3>已经收下 {signals.length} 条，其中 {ready} 条只差签字</h3></div>
-      <button className="ghost-action" onClick={() => onOpen(latest[0]?.id || "")}>进入判断 →</button>
+      <div><small className="aside-kicker">情报流</small><h3>最近发生了什么</h3><p className="latest-rank-note">按事件或披露日期倒序；同日再看来源强度与判断进度。</p></div>
+      <button className="ghost-action" onClick={() => onOpen(latest[0]?.id || "")}>看全部 →</button>
     </header>
     <div className="latest-list">
-      {latest.map(signal => {
-        const left = missingGates(signal).length;
+      {latest.map((signal, index) => {
+        const gate = gateState(signal);
+        const expired = isExpired(signal);
+        const status = expired ? "已过期" : gate.executable ? "已确认" : gate.passed === 5 ? "待签字" : "待核";
         const relation = signal.edges?.[0];
-        return <button key={signal.id} onClick={() => onOpen(signal.id)}>
-          <b>{signal.title}</b>
-          <span>{relation ? `${relation.from} → ${relation.to}` : signal.source}</span>
-          <em className={left ? "" : "done"}>{left ? `还差 ${left} 项` : "只差签字"}</em>
+        const eventDate = signalEventDateLabel(signal);
+        return <button key={signal.id} className="latest-news" onClick={() => onOpen(signal.id)}>
+          <em className="news-rank">{String(index + 1).padStart(2, "0")}</em>
+          <div className="news-main">
+            <b>{newsHeadline(signal)}</b>
+            <p>{signal.evidence.length > 96 ? `${signal.evidence.slice(0, 96)}…` : signal.evidence}</p>
+            <span>{eventDate ? `事件 ${eventDate}` : "事件日期待核"} · {signal.source}{relation ? ` · ${relationLabel(relation.relation)}` : ""}</span>
+          </div>
+          <i className={`news-state ${expired ? "stale" : gate.executable ? "ok" : gate.passed === 5 ? "sign" : ""}`}>{status}</i>
         </button>;
       })}
-      {pending > 0 && <small className="latest-note">还有 {pending} 条待补。点任意一条直接进入判断。</small>}
     </div>
   </section>;
 }

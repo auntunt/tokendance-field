@@ -3,26 +3,24 @@
 // 每轮做的事：
 //   1. 从 SQLite 的 fde_presets 挑「最久没查」的 N 家（重点公司优先）；
 //   2. 通过内部 /api/query 启动后台查询任务并轮询；
-//   3. 新候选按 title+source 去重后合并进工作区；
-//   4. 对第一条新候选调用 /api/enrich 自动起草；
-//   5. 把本轮结果写回 fde_presets——查询包因此自动更新。
+//   3. 在写入前执行来源、时效、关系去重和图谱容量预演；
+//   4. 只把少量高质量新关系并入工作区，历史与过期数据均保留；
+//   5. 对第一条新候选调用 /api/enrich 自动起草；
+//   6. 把本轮结果写回 fde_presets——查询包因此自动更新。
 //
 // 查询速度仍受 Bing 20 秒间隔约束，所以每轮默认 3 家，避免一次跑太久。
 
 import { ensureWorkspaceSchema, getDb } from "../db";
 import { ensureFdePresets, nextPresetBatch, recordPresetSearch } from "./fde-presets";
+import {
+  DEFAULT_SCHEDULER_POLICY,
+  selectSchedulerCandidates,
+  type SchedulerCandidate,
+  type SchedulerSignalLike,
+} from "./scheduler-policy";
+import { latestObservedDate } from "./signal-date";
 
-type Candidate = {
-  title?: string;
-  evidence?: string;
-  source?: string;
-  sourceUrl?: string;
-  edges?: Array<{ from?: string; to?: string; relation?: string; direction?: string; quote?: string }>;
-  suggestedRelation?: string;
-  _grade?: string;
-  _duplicate?: boolean;
-  _duplicateNote?: string;
-};
+type Candidate = SchedulerCandidate;
 
 type SchedulerState = {
   started: boolean;
@@ -77,16 +75,6 @@ async function internalApi(path: string, options: RequestInit = {}) {
   return data;
 }
 
-function latestDate(text: string): Date | null {
-  const found: number[] = [];
-  const push = (y: number, m: number, d: number) => {
-    if (y >= 2000 && y <= 2030 && m >= 1 && m <= 12 && d >= 1 && d <= 31) found.push(new Date(y, m - 1, d).getTime());
-  };
-  for (const m of text.matchAll(/(20\d{2})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日/g)) push(+m[1], +m[2], +m[3]);
-  for (const m of text.matchAll(/(20\d{2})[-/](\d{1,2})[-/](\d{1,2})/g)) push(+m[1], +m[2], +m[3]);
-  return found.length ? new Date(Math.max(...found)) : null;
-}
-
 function iso(date: Date) {
   const p = (n: number) => String(n).padStart(2, "0");
   return `${date.getFullYear()}-${p(date.getMonth() + 1)}-${p(date.getDate())}`;
@@ -94,7 +82,7 @@ function iso(date: Date) {
 
 function validUntilFor(relation: string, text: string): string {
   const days = { equity: 365, supply: 180, personnel: 180, license: 365, compete: 90 }[relation] || 180;
-  const anchor = latestDate(text) || new Date();
+  const anchor = latestObservedDate(text) || new Date();
   const due = new Date(anchor.getTime() + days * 86400000);
   const floor = new Date(Date.now() + 30 * 86400000);
   return iso(due > floor ? due : floor);
@@ -125,7 +113,7 @@ function signalFromCandidate(preset: { id: string; name: string }, candidate: Ca
     edges,
     origin: `scheduler-${today}`,
     constraints: {
-      scope: { entityScope, marketRegion: "", dataBasis: "以来源原文口径为准", timeWindow: latestDate(String(candidate.evidence || "")) ? `材料时点 ${iso(latestDate(String(candidate.evidence || ""))!)} 起` : "", ourAccess: "" },
+      scope: { entityScope, marketRegion: "", dataBasis: "以来源原文口径为准", timeWindow: latestObservedDate(String(candidate.evidence || "")) ? `材料时点 ${iso(latestObservedDate(String(candidate.evidence || ""))!)} 起` : "", ourAccess: "" },
       epistemicState: "observation",
       falsifier: "",
       counterEvidence: "",
@@ -141,8 +129,12 @@ function signalFromCandidate(preset: { id: string; name: string }, candidate: Ca
 export async function runSchedulerBatch(limit = 3): Promise<Record<string, unknown>> {
   if (state.running) return { started: false, reason: "已有批次在跑" };
   state.running = true;
+  state.lastError = null;
   const startedAt = new Date();
-  const summary = { presets: 0, searched: 0, candidates: 0, added: 0, enriched: 0, failed: 0 };
+  const summary = { presets: 0, searched: 0, candidates: 0, qualified: 0, added: 0, addedEdges: 0, rejected: 0, rejectionReasons: {} as Record<string, number>, enriched: 0, failed: 0 };
+  const maxAddedSignals = envLimit("FDE_SCHEDULER_MAX_ADDED_SIGNALS", DEFAULT_SCHEDULER_POLICY.maxAddedSignals);
+  const maxAddedEdges = envLimit("FDE_SCHEDULER_MAX_ADDED_EDGES", DEFAULT_SCHEDULER_POLICY.maxAddedEdges);
+  const maxGraphEdges = envLimit("FDE_SCHEDULER_MAX_GRAPH_EDGES", DEFAULT_SCHEDULER_POLICY.maxGraphEdges);
   try {
     ensureWorkspaceSchema();
     const db = getDb();
@@ -151,9 +143,13 @@ export async function runSchedulerBatch(limit = 3): Promise<Record<string, unkno
 
     for (const preset of presets) {
       try {
+        // 查询词从简单到具体：裸公司名最稳，再补投资和客户/中标两条。
+        // 不再用「FDE 前置部署 交付」这种低共现长词——它最容易触发搜索引擎降级。
+        const year = new Date().getFullYear();
         const searchQueries = [
-          `${preset.name} FDE 前置部署 交付`,
-          `${preset.name} 融资 客户 最新进展`,
+          preset.name,
+          `${preset.name} ${year} 投资 收购 战略合作`,
+          `${preset.name} ${year} 任命 竞争 授权 客户`,
         ];
         const started = await internalApi("/api/query", {
           method: "POST",
@@ -175,24 +171,38 @@ export async function runSchedulerBatch(limit = 3): Promise<Record<string, unkno
         summary.searched++;
         summary.candidates += candidates.length;
 
-        // 合并进工作区，按 title+source 去重。
+        // 合并前按来源、日期、关系与容量做完整预演。历史数据保留，只在展示层降序。
         const workspace = await internalApi("/api/workspace") as { weights?: number[]; signals?: unknown[]; feedback?: unknown[]; snapshots?: unknown[]; people?: unknown[] };
-        const signals = Array.isArray(workspace.signals) ? workspace.signals as Array<{ title?: string; source?: string }> : [];
+        const rawSignals = Array.isArray(workspace.signals) ? workspace.signals as Array<SchedulerSignalLike & { source?: string }> : [];
+        const signals = rawSignals;
         const keys = new Set(signals.map(s => `${s.title}||${s.source}`));
         const today = new Date().toISOString().slice(0, 10);
-        const fresh = candidates.filter(c => c && !c._duplicate).map((c, index) => signalFromCandidate(preset, c, index, today))
+        const selection = selectSchedulerCandidates(candidates, signals, {
+          maxAddedSignals: Math.max(0, maxAddedSignals - summary.added),
+          maxAddedEdges: Math.max(0, maxAddedEdges - summary.addedEdges),
+          maxGraphEdges,
+        });
+        const rejected = Object.values(selection.rejected).reduce((total, count) => total + count, 0);
+        summary.rejected += rejected;
+        for (const [reason, count] of Object.entries(selection.rejected)) {
+          summary.rejectionReasons[reason] = (summary.rejectionReasons[reason] || 0) + count;
+        }
+        summary.qualified += selection.accepted.length;
+        const fresh = selection.accepted.map((c, index) => signalFromCandidate(preset, c, index, today))
           .filter(s => !keys.has(`${s.title}||${s.source}`));
+        const merged = [...signals, ...fresh];
+        const payload = {
+          weights: Array.isArray(workspace.weights) ? workspace.weights : [25, 25, 25, 25],
+          signals: merged,
+          feedback: Array.isArray(workspace.feedback) ? workspace.feedback : [],
+          snapshots: Array.isArray(workspace.snapshots) ? workspace.snapshots : [],
+          people: Array.isArray(workspace.people) ? workspace.people : [],
+        };
         if (fresh.length) {
-          const merged = [...signals, ...fresh];
-          const payload = {
-            weights: Array.isArray(workspace.weights) ? workspace.weights : [25, 25, 25, 25],
-            signals: merged,
-            feedback: Array.isArray(workspace.feedback) ? workspace.feedback : [],
-            snapshots: Array.isArray(workspace.snapshots) ? workspace.snapshots : [],
-            people: Array.isArray(workspace.people) ? workspace.people : [],
-          };
           await internalApi("/api/workspace", { method: "PUT", body: JSON.stringify(payload) });
+        }
 
+        if (fresh.length) {
           // 第一条新候选自动起草，其余可在判断页一键补全。
           const enriched = await internalApi("/api/enrich", {
             method: "POST",
@@ -205,6 +215,7 @@ export async function runSchedulerBatch(limit = 3): Promise<Record<string, unkno
             summary.enriched++;
           }
           summary.added += fresh.length;
+          summary.addedEdges += fresh.reduce((total, signal) => total + signal.edges.length, 0);
         }
 
         const latest = candidates.slice(0, 3).map(c => ({ title: String(c.title || "").slice(0, 120), source: String(c.source || "").slice(0, 80), url: c.sourceUrl ? String(c.sourceUrl).slice(0, 300) : undefined }));
@@ -216,7 +227,7 @@ export async function runSchedulerBatch(limit = 3): Promise<Record<string, unkno
       }
     }
 
-    state.lastSummary = `本批 ${summary.presets} 家：查询成功 ${summary.searched} 家，候选 ${summary.candidates} 条，新入库 ${summary.added} 条，自动起草 ${summary.enriched} 条，失败 ${summary.failed} 家`;
+    state.lastSummary = `本批 ${summary.presets} 家：候选 ${summary.candidates} 条，质量门通过 ${summary.qualified} 条，新入库 ${summary.added} 条/${summary.addedEdges} 关系，过滤 ${summary.rejected} 条，失败 ${summary.failed} 家`;
   } catch (error) {
     state.lastError = error instanceof Error ? error.message : "调度器失败";
     console.error("[scheduler]", error);
@@ -224,9 +235,13 @@ export async function runSchedulerBatch(limit = 3): Promise<Record<string, unkno
     state.running = false;
     state.lastRunAt = startedAt.toISOString();
     state.completedBatches++;
-    state.lastError = state.lastError || null;
   }
   return { started: true, ...summary, elapsedSeconds: Math.round((Date.now() - startedAt.getTime()) / 1000), summary: state.lastSummary };
+}
+
+function envLimit(name: string, fallback: number) {
+  const value = Number(process.env[name]);
+  return Number.isFinite(value) && value >= 0 ? Math.floor(value) : fallback;
 }
 
 export function startScheduler(intervalHours = 6, initialDelayMs = 90_000) {

@@ -1,0 +1,242 @@
+{
+  "verifiedAt": "2026-08-18",
+  "dropIds": [
+    "signal-1786523368154-13ae0a4d912808"
+  ],
+  "signals": [
+    {
+      "id": "curated-databricks-coatue-2026-07-16",
+      "title": "Coatue 领投 Databricks 新一轮战略融资（估值 1880 亿美元，待交割）",
+      "evidence": "Databricks 于 2026-07-16 宣布已签署战略融资条款书，估值 1880 亿美元，由现有投资方 Coatue 领投；公司称该轮预计于 2026 年夏末完成。",
+      "source": "Databricks 官方新闻稿",
+      "sourceUrl": "https://www.databricks.com/company/newsroom/press-releases/databricks-raising-strategic-round-funding-188-billion-valuation",
+      "createdAt": "2026-08-18T12:00:00.000Z",
+      "dimensions": [],
+      "topics": ["unclustered"],
+      "candidateScore": 0,
+      "outcome": "watching",
+      "starred": false,
+      "aiAnalysis": null,
+      "edges": [{ "from": "Coatue", "to": "Databricks", "relation": "equity", "direction": "forward", "quote": "signed a term sheet ... led by existing investor Coatue" }],
+      "origin": "refresh-2026-08-18",
+      "constraints": {
+        "scope": { "entityScope": "Coatue / Databricks", "marketRegion": "美国", "dataBasis": "公司官网新闻稿", "timeWindow": "事件日期 2026-07-16；截至 2026-08-18 仍为待交割条款书", "ourAccess": "" },
+        "epistemicState": "observation", "falsifier": "融资终止、领投方变更或最终交割公告与条款书不一致", "counterEvidence": "尚未见最终交割公告", "sourceType": "related", "validUntil": "2026-10-31", "probability": 90, "signedOff": false, "humanSource": ""
+      }
+    },
+    {
+      "id": "curated-databricks-microsoft-2026-07-23",
+      "title": "Databricks 与 Microsoft 将战略合作延长至 2030 年代",
+      "evidence": "双方于 2026-07-23 宣布扩大战略合作并延长至 2030 年代；Databricks 将加深使用 Azure Databricks 和 Azure Cobalt，Microsoft 则继续把 Databricks 平台能力整合进其产品。",
+      "source": "Databricks / Microsoft 联合新闻稿",
+      "sourceUrl": "https://www.databricks.com/company/newsroom/press-releases/databricks-and-microsoft-expand-partnership-help-enterprises-bring",
+      "createdAt": "2026-08-18T12:00:00.000Z",
+      "dimensions": [], "topics": ["unclustered"], "candidateScore": 0, "outcome": "watching", "starred": false, "aiAnalysis": null,
+      "edges": [{ "from": "Databricks", "to": "Microsoft", "relation": "supply", "direction": "forward", "quote": "extend strategic partnership through the 2030s" }],
+      "origin": "refresh-2026-08-18",
+      "constraints": {
+        "scope": { "entityScope": "Databricks / Microsoft", "marketRegion": "全球", "dataBasis": "双方联合新闻稿", "timeWindow": "公告日期 2026-07-23；合作延长至 2030 年代", "ourAccess": "" },
+        "epistemicState": "observation", "falsifier": "任一方公告终止或重大收缩合作", "counterEvidence": "", "sourceType": "related", "validUntil": "2027-01-23", "probability": 95, "signedOff": false, "humanSource": ""
+      }
+    },
+    {
+      "id": "curated-openai-databricks-2025-09-25",
+      "title": "OpenAI 模型通过 Databricks Agent Bricks 原生提供（多年期 1 亿美元合作）",
+      "evidence": "Databricks 与 OpenAI 于 2025-09-25 宣布多年期、金额 1 亿美元的合作，将 OpenAI 模型原生提供给 Databricks 平台客户；公告同时称 OpenAI 使用 Databricks 处理 AI 数据。",
+      "source": "Databricks / OpenAI 联合新闻稿",
+      "sourceUrl": "https://www.databricks.com/company/newsroom/press-releases/databricks-and-openai-launch-groundbreaking-partnership-bring",
+      "createdAt": "2026-08-18T12:00:00.000Z",
+      "dimensions": [], "topics": ["unclustered"], "candidateScore": 0, "outcome": "watching", "starred": false, "aiAnalysis": null,
+      "edges": [{ "from": "OpenAI", "to": "Databricks", "relation": "supply", "direction": "forward", "quote": "multi-year partnership to make OpenAI models natively available" }],
+      "origin": "refresh-2026-08-18",
+      "constraints": {
+        "scope": { "entityScope": "OpenAI / Databricks", "marketRegion": "全球", "dataBasis": "双方联合新闻稿", "timeWindow": "合作公告 2025-09-25；多年期", "ourAccess": "" },
+        "epistemicState": "observation", "falsifier": "双方公告终止合作或产品下架", "counterEvidence": "", "sourceType": "related", "validUntil": "2027-02-18", "probability": 95, "signedOff": false, "humanSource": ""
+      }
+    },
+    {
+      "id": "curated-databricks-neon-2026-06-12",
+      "title": "Databricks 已将收购 Neon 获得的架构用于 Lakebase",
+      "evidence": "Databricks 2026 年官方 Lakebase 文档确认，Lakebase 基于其通过收购 Neon 获得的架构；这比 2025 年的“拟收购”公告更能反映当前状态。",
+      "source": "Databricks 官方文档",
+      "sourceUrl": "https://docs.databricks.com/aws/en/oltp/",
+      "createdAt": "2026-08-18T12:00:00.000Z",
+      "dimensions": [], "topics": ["unclustered"], "candidateScore": 0, "outcome": "watching", "starred": false, "aiAnalysis": null,
+      "edges": [{ "from": "Databricks", "to": "Neon", "relation": "equity", "direction": "forward", "quote": "Lakebase ... built on the architecture from Databricks' Neon acquisition" }],
+      "origin": "refresh-2026-08-18",
+      "constraints": {
+        "scope": { "entityScope": "Databricks / Neon", "marketRegion": "美国", "dataBasis": "Databricks 当前产品文档；原收购公告日期 2025-05-14", "timeWindow": "文档更新至 2026-06-12，核验于 2026-08-18", "ourAccess": "" },
+        "epistemicState": "observation", "falsifier": "Databricks 更正收购状态或剥离 Neon 资产", "counterEvidence": "", "sourceType": "related", "validUntil": "2027-08-18", "probability": 95, "signedOff": false, "humanSource": ""
+      }
+    },
+    {
+      "id": "curated-meta-scale-2025-06-12",
+      "title": "Meta 战略投资 Scale AI，Scale 保持独立运营",
+      "evidence": "Scale AI 于 2025-06-12 宣布 Meta 的重大投资使公司估值超过 290 亿美元，Meta 持有少数股权，并扩大双方商业合作；Scale 随后明确公司仍保持独立。",
+      "source": "Scale AI 官方公告",
+      "sourceUrl": "https://scale.com/blog/scale-ai-announces-next-phase-of-company-evolution",
+      "createdAt": "2026-08-18T12:00:00.000Z",
+      "dimensions": [], "topics": ["unclustered"], "candidateScore": 0, "outcome": "watching", "starred": false, "aiAnalysis": null,
+      "edges": [{ "from": "Meta", "to": "Scale AI", "relation": "equity", "direction": "forward", "quote": "Meta will hold a minority of Scale's outstanding equity" }],
+      "origin": "refresh-2026-08-18",
+      "constraints": {
+        "scope": { "entityScope": "Meta / Scale AI", "marketRegion": "美国", "dataBasis": "Scale AI 公司公告", "timeWindow": "投资公告 2025-06-12；独立运营说明 2025-06-18", "ourAccess": "" },
+        "epistemicState": "observation", "falsifier": "持股处置、并购或控制权变化公告", "counterEvidence": "Scale 明确 Meta 仅持少数股权且公司保持独立", "sourceType": "related", "validUntil": "2027-06-12", "probability": 95, "signedOff": false, "humanSource": ""
+      }
+    },
+    {
+      "id": "curated-keg-zhipu-2026-08-18",
+      "title": "智谱源自清华大学计算机系知识工程实验室（KEG）成果转化",
+      "evidence": "智谱官网当前公司介绍称，公司成立于 2019 年，由清华大学计算机系知识工程实验室（KEG）技术成果转化而来。",
+      "source": "智谱官方公司介绍",
+      "sourceUrl": "https://www.zhipuai.cn/zh/about",
+      "createdAt": "2026-08-18T12:00:00.000Z",
+      "dimensions": [], "topics": ["unclustered"], "candidateScore": 0, "outcome": "watching", "starred": false, "aiAnalysis": null,
+      "edges": [{ "from": "清华大学计算机系 KEG", "to": "智谱", "relation": "personnel", "direction": "forward", "quote": "由清华大学计算机系知识工程实验室（KEG）技术成果转化而来" }],
+      "origin": "refresh-2026-08-18",
+      "constraints": {
+        "scope": { "entityScope": "清华大学计算机系 KEG / 智谱", "marketRegion": "中国", "dataBasis": "智谱官网当前公司介绍", "timeWindow": "历史渊源发生于 2019 年；核验于 2026-08-18", "ourAccess": "" },
+        "epistemicState": "observation", "falsifier": "公司或高校对成果转化关系作出更正", "counterEvidence": "", "sourceType": "related", "validUntil": "2027-08-18", "probability": 95, "signedOff": false, "humanSource": ""
+      }
+    },
+    {
+      "id": "curated-sensetime-minimax-2026-08-18",
+      "title": "MiniMax 创始人闫俊杰及 COO 云沂均有商汤任职经历",
+      "evidence": "MiniMax 投资者关系页面显示，创始人闫俊杰曾在商汤任职超过六年，担任副总裁及研究院副院长；COO 云沂也曾在商汤担任融资、战略和创新业务职位。",
+      "source": "MiniMax 投资者关系",
+      "sourceUrl": "https://ir.minimax.io/corporate-information/management",
+      "createdAt": "2026-08-18T12:00:00.000Z",
+      "dimensions": [], "topics": ["unclustered"], "candidateScore": 0, "outcome": "watching", "starred": false, "aiAnalysis": null,
+      "edges": [{ "from": "商汤科技", "to": "MiniMax", "relation": "personnel", "direction": "forward", "quote": "founder and COO both previously served at SenseTime" }],
+      "origin": "refresh-2026-08-18",
+      "constraints": {
+        "scope": { "entityScope": "商汤科技 / MiniMax", "marketRegion": "中国", "dataBasis": "MiniMax 上市公司投资者关系页面", "timeWindow": "历史任职事实；核验于 2026-08-18", "ourAccess": "" },
+        "epistemicState": "observation", "falsifier": "公司公告或监管文件更正管理层履历", "counterEvidence": "", "sourceType": "related", "validUntil": "2027-08-18", "probability": 95, "signedOff": false, "humanSource": ""
+      }
+    },
+    {
+      "id": "curated-chinasoft-siliconflow-2026-06-17",
+      "title": "中软国际战略投资硅基流动",
+      "evidence": "中软国际官网于 2026-06-17 发布“战略投资硅基流动，深化产业协同共建高价值 Token 运营生态”。",
+      "source": "中软国际官网",
+      "sourceUrl": "https://www.chinasofti.com/",
+      "createdAt": "2026-08-18T12:00:00.000Z",
+      "dimensions": [], "topics": ["unclustered"], "candidateScore": 0, "outcome": "watching", "starred": false, "aiAnalysis": null,
+      "edges": [{ "from": "中软国际", "to": "硅基流动", "relation": "equity", "direction": "forward", "quote": "中软国际战略投资硅基流动" }],
+      "origin": "refresh-2026-08-18",
+      "constraints": {
+        "scope": { "entityScope": "中软国际 / 硅基流动", "marketRegion": "中国", "dataBasis": "中软国际官网公司动态", "timeWindow": "公告日期 2026-06-17；核验于 2026-08-18", "ourAccess": "" },
+        "epistemicState": "observation", "falsifier": "交易终止或持股处置公告", "counterEvidence": "未披露持股比例与交易金额", "sourceType": "related", "validUntil": "2027-06-17", "probability": 90, "signedOff": false, "humanSource": ""
+      }
+    },
+    {
+      "id": "curated-chinasoft-moonshot-2026-07-20",
+      "title": "中软国际与月之暗面共建 FDE 创新实验室",
+      "evidence": "中软国际官网于 2026-07-20 宣布与月之暗面签署 Token 分成及联合创新合作协议，共建 FDE 创新实验室，布局企业级 Agentic AI 业务。",
+      "source": "中软国际官网",
+      "sourceUrl": "https://www.chinasofti.com/",
+      "createdAt": "2026-08-18T12:00:00.000Z",
+      "dimensions": [], "topics": ["unclustered"], "candidateScore": 0, "outcome": "watching", "starred": false, "aiAnalysis": null,
+      "edges": [{ "from": "中软国际", "to": "月之暗面", "relation": "supply", "direction": "forward", "quote": "签署 Token 分成及联合创新合作协议，共建 FDE 创新实验室" }],
+      "origin": "refresh-2026-08-18",
+      "constraints": {
+        "scope": { "entityScope": "中软国际 / 月之暗面", "marketRegion": "中国", "dataBasis": "中软国际官网公司动态", "timeWindow": "公告日期 2026-07-20；核验于 2026-08-18", "ourAccess": "" },
+        "epistemicState": "observation", "falsifier": "任一方公告终止合作或实验室停止运营", "counterEvidence": "未披露商业规模与收入贡献", "sourceType": "related", "validUntil": "2027-01-20", "probability": 90, "signedOff": false, "humanSource": ""
+      }
+    },
+    {
+      "id": "curated-openai-snowflake-2026-02-02",
+      "title": "OpenAI 与 Snowflake 达成多年期 2 亿美元合作",
+      "evidence": "Snowflake 于 2026-02-02 宣布与 OpenAI 建立多年期、金额 2 亿美元的直接合作，将 OpenAI 模型通过 Snowflake Cortex AI 原生提供，并开展联合产品创新和市场拓展。",
+      "source": "Snowflake 官方新闻稿",
+      "sourceUrl": "https://www.snowflake.com/en/news/press-releases/snowflake-and-openAI-forge-200-million-partnership-to-bring-enterprise-ready-ai-to-the-worlds-most-trusted-data-platform/",
+      "createdAt": "2026-08-18T13:00:00.000Z",
+      "dimensions": [], "topics": ["unclustered"], "candidateScore": 0, "outcome": "watching", "starred": false, "aiAnalysis": null,
+      "edges": [{ "from": "OpenAI", "to": "Snowflake", "relation": "supply", "direction": "forward", "quote": "multi-year $200 million partnership; OpenAI models natively available in Snowflake Cortex AI" }],
+      "origin": "refresh-2026-08-18",
+      "constraints": {
+        "scope": { "entityScope": "OpenAI / Snowflake", "marketRegion": "全球", "dataBasis": "Snowflake 官方新闻稿", "timeWindow": "公告日期 2026-02-02；多年期合作", "ourAccess": "" },
+        "epistemicState": "observation", "falsifier": "双方公告终止合作或模型从 Snowflake 下架", "counterEvidence": "", "sourceType": "related", "validUntil": "2027-02-02", "probability": 95, "signedOff": false, "humanSource": ""
+      }
+    },
+    {
+      "id": "curated-snowflake-palantir-2025-10-16",
+      "title": "Snowflake 与 Palantir 建立企业 AI 与分析战略合作",
+      "evidence": "Snowflake 于 2025-10-16 宣布与 Palantir 建立战略合作，将 Snowflake AI Data Cloud 与 Palantir Foundry、AIP 集成，并提供双向零复制互操作能力。",
+      "source": "Snowflake 官方新闻稿",
+      "sourceUrl": "https://www.snowflake.com/en/news/press-releases/snowflake-palantir-announce-strategic-partnership-for-enterprise-ready-ai-analytics/",
+      "createdAt": "2026-08-18T13:00:00.000Z",
+      "dimensions": [], "topics": ["unclustered"], "candidateScore": 0, "outcome": "watching", "starred": false, "aiAnalysis": null,
+      "edges": [{ "from": "Snowflake", "to": "Palantir", "relation": "supply", "direction": "forward", "quote": "strategic partnership integrating Snowflake with Palantir Foundry and AIP" }],
+      "origin": "refresh-2026-08-18",
+      "constraints": {
+        "scope": { "entityScope": "Snowflake / Palantir", "marketRegion": "全球", "dataBasis": "Snowflake 官方新闻稿", "timeWindow": "公告日期 2025-10-16；核验于 2026-08-18", "ourAccess": "" },
+        "epistemicState": "observation", "falsifier": "双方公告终止集成或产品下架", "counterEvidence": "", "sourceType": "related", "validUntil": "2027-02-18", "probability": 95, "signedOff": false, "humanSource": ""
+      }
+    },
+    {
+      "id": "curated-snowflake-cloud-competitors-2026-01-31",
+      "title": "Snowflake 在最新年报中将三大公有云列为直接竞争者",
+      "evidence": "Snowflake 截至 2026-01-31 财年的 10-K 明确将 AWS、Microsoft Azure 和 Google Cloud Platform 列为在其所有市场参与竞争的大型公有云提供商；这些公司同时也是 Snowflake 的托管平台。",
+      "source": "Snowflake 2026 财年 Form 10-K",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1640147/000164014726000008/snow-20260131.htm",
+      "createdAt": "2026-08-18T13:00:00.000Z",
+      "dimensions": [], "topics": ["unclustered"], "candidateScore": 0, "outcome": "watching", "starred": false, "aiAnalysis": null,
+      "edges": [
+        { "from": "Snowflake", "to": "AWS", "relation": "compete", "direction": "forward", "quote": "large public cloud providers ... Amazon Web Services" },
+        { "from": "Snowflake", "to": "Microsoft Azure", "relation": "compete", "direction": "forward", "quote": "large public cloud providers ... Microsoft Azure" },
+        { "from": "Snowflake", "to": "Google Cloud Platform", "relation": "compete", "direction": "forward", "quote": "large public cloud providers ... Google Cloud Platform" }
+      ],
+      "origin": "refresh-2026-08-18",
+      "constraints": {
+        "scope": { "entityScope": "Snowflake / AWS / Microsoft Azure / Google Cloud Platform", "marketRegion": "全球", "dataBasis": "Snowflake 向 SEC 提交的 2026 财年 10-K", "timeWindow": "财年截止 2026-01-31；核验于 2026-08-18", "ourAccess": "" },
+        "epistemicState": "observation", "falsifier": "Snowflake 后续监管文件不再将相关云平台列为竞争者", "counterEvidence": "三大云同时为 Snowflake 提供托管基础设施，关系兼具合作与竞争", "sourceType": "independent", "validUntil": "2027-01-31", "probability": 95, "signedOff": false, "humanSource": ""
+      }
+    },
+    {
+      "id": "curated-c3-microsoft-2026-04-30",
+      "title": "C3 AI 与 Microsoft 维持多年期全球战略联盟",
+      "evidence": "C3 AI 截至 2026-04-30 财年的 10-K 确认，双方维持多年期全球联盟，覆盖产品集成、销售与客户成功；C3 AI 产品同时通过 Azure Marketplace 销售。",
+      "source": "C3 AI 2026 财年 Form 10-K",
+      "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1577526/000157752626000078/ai-20260430.htm",
+      "createdAt": "2026-08-18T13:00:00.000Z",
+      "dimensions": [], "topics": ["unclustered"], "candidateScore": 0, "outcome": "watching", "starred": false, "aiAnalysis": null,
+      "edges": [{ "from": "Microsoft", "to": "C3.ai", "relation": "supply", "direction": "forward", "quote": "multi-year global alliance encompassing product integration, sales and customer success" }],
+      "origin": "refresh-2026-08-18",
+      "constraints": {
+        "scope": { "entityScope": "Microsoft / C3.ai", "marketRegion": "全球", "dataBasis": "C3 AI 向 SEC 提交的 2026 财年 10-K", "timeWindow": "财年截止 2026-04-30；核验于 2026-08-18", "ourAccess": "" },
+        "epistemicState": "observation", "falsifier": "任一方公告终止联盟或后续年报不再披露该合作", "counterEvidence": "", "sourceType": "independent", "validUntil": "2027-04-30", "probability": 95, "signedOff": false, "humanSource": ""
+      }
+    },
+    {
+      "id": "curated-scale-icg-2026-04-20",
+      "title": "Scale AI 收购国防技术公司 ICG Solutions",
+      "evidence": "Scale AI 于 2026-04-20 宣布收购实时流数据分析公司 ICG Solutions，并将其技术与 Scale 的智能体平台整合；ICG 初期作为 Scale 的全资子公司运营。",
+      "source": "Scale AI 官方公告",
+      "sourceUrl": "https://scale.com/blog/scale-acquires-icg-solutions",
+      "createdAt": "2026-08-18T13:00:00.000Z",
+      "dimensions": [], "topics": ["unclustered"], "candidateScore": 0, "outcome": "watching", "starred": false, "aiAnalysis": null,
+      "edges": [{ "from": "Scale AI", "to": "ICG Solutions", "relation": "equity", "direction": "forward", "quote": "acquisition of ICG Solutions; wholly owned subsidiary of Scale" }],
+      "origin": "refresh-2026-08-18",
+      "constraints": {
+        "scope": { "entityScope": "Scale AI / ICG Solutions", "marketRegion": "美国", "dataBasis": "Scale AI 官方公告", "timeWindow": "公告日期 2026-04-20；核验于 2026-08-18", "ourAccess": "" },
+        "epistemicState": "observation", "falsifier": "Scale 公告交易撤销或剥离 ICG", "counterEvidence": "未披露交易金额", "sourceType": "related", "validUntil": "2027-04-20", "probability": 95, "signedOff": false, "humanSource": ""
+      }
+    },
+    {
+      "id": "curated-illumina-scale-2026-08-10",
+      "title": "Scale AI 任命前 Illumina CEO Francis deSouza 为首席执行官",
+      "evidence": "Scale AI 于 2026-07-30 宣布任命 Francis deSouza 为 CEO，2026-08-10 生效；其此前曾任 Illumina 总裁兼 CEO，最近任 Google Cloud COO 及安全产品总裁。",
+      "source": "Scale AI 官方公告",
+      "sourceUrl": "https://scale.com/blog/scale-appoints-new-ceo",
+      "createdAt": "2026-08-18T13:00:00.000Z",
+      "dimensions": [], "topics": ["unclustered"], "candidateScore": 0, "outcome": "watching", "starred": false, "aiAnalysis": null,
+      "edges": [{ "from": "Illumina", "to": "Scale AI", "relation": "personnel", "direction": "forward", "quote": "Francis deSouza previously served as President and CEO of Illumina" }],
+      "origin": "refresh-2026-08-18",
+      "constraints": {
+        "scope": { "entityScope": "Illumina / Scale AI", "marketRegion": "美国", "dataBasis": "Scale AI 官方任命公告", "timeWindow": "公告日期 2026-07-30；任命于 2026-08-10 生效", "ourAccess": "" },
+        "epistemicState": "observation", "falsifier": "公司更正任命或履历信息", "counterEvidence": "其最近一段任职经历为 Google Cloud，并非直接从 Illumina 加入 Scale", "sourceType": "related", "validUntil": "2027-02-10", "probability": 95, "signedOff": false, "humanSource": ""
+      }
+    }
+  ]
+}

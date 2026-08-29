@@ -45,9 +45,9 @@ export default function LoginPage() {
     <main className="login-page">
       {/* method="post" 是没有 JS 时的兜底：默认的 GET 会把密码贴到地址栏和访问日志里。 */}
       <form className="login-card" method="post" onSubmit={submit}>
-        <div className="login-brand"><span>TD</span><b>TOKENDANCE FIELD</b></div>
-        <h1>先证明是你</h1>
-        <p className="login-lede">这是台内部账本。凭据由部署时的环境变量决定，不在这里注册。</p>
+        <div className="login-brand"><span>F</span><b>FIELD / EVIDENCE OS</b></div>
+        <h1>进入研究工作台</h1>
+        <p className="login-lede">这里保存来源正文、事实主张和查询关系。访问凭据由部署环境统一管理。</p>
 
         <label htmlFor="login-user">用户名
           <input id="login-user" name="user" ref={userRef} defaultValue="" required
@@ -61,9 +61,9 @@ export default function LoginPage() {
         {error && <p className="login-error" role="alert">● {error}</p>}
 
         <button type="submit" className="primary-action" disabled={busy}>
-          {busy ? "核对中…" : "进去"}
+          {busy ? "正在核验…" : "进入工作台"}
         </button>
-        <small className="login-foot">登录状态保留 12 小时。脚本和健康检查仍然走 Basic 认证。</small>
+        <small className="login-foot">会话保留 12 小时；API 健康检查继续使用服务端认证。</small>
       </form>
     </main>
   );

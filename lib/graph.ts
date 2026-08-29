@@ -113,19 +113,44 @@ function layoutGraph(ids: string[], degree: Map<string, number>, edges: GraphEdg
     return positions;
   }
 
-  // 3. 每个分量放进自己的网格单元，簇与簇不再混在一起。
-  const cols = Math.ceil(Math.sqrt(components.length));
-  const rows = Math.ceil(components.length / cols);
-  const nodes: GraphNode[] = [];
-  components.forEach((component, index) => {
-    const local = layoutComponent(component);
-    const col = index % cols, row = Math.floor(index / cols);
-    for (const id of component) {
-      const p = local.get(id)!;
-      const x = (col + p.x) / cols;
-      const y = (row + p.y) / rows;
-      nodes.push({ id, degree: degree.get(id) || 0, x: Math.min(0.975, Math.max(0.025, x)), y: Math.min(0.975, Math.max(0.025, y)) });
+  // 3. 货架式排布：大簇占一整行，小簇按 1/2、1/4 宽度拼进同一行。
+  //    小簇不再被等面积网格强行放大，2–3 个节点的簇只占画布一角。
+  const slotOf = (size: number) => (size >= 7 ? 1 : size >= 4 ? 0.5 : 0.25);
+  const bins: Array<{ components: string[][]; used: number; largest: number }> = [];
+  const localLayouts = components.map(component => ({ component, local: layoutComponent(component), slot: slotOf(component.length) }));
+  localLayouts.sort((a, b) => b.component.length - a.component.length || b.slot - a.slot);
+  for (const item of localLayouts) {
+    const bin = bins.find(candidate => candidate.used + item.slot <= 1.0001);
+    if (bin) {
+      bin.components.push(item.component);
+      bin.used += item.slot;
+      bin.largest = Math.max(bin.largest, item.component.length);
+    } else {
+      bins.push({ components: [item.component], used: item.slot, largest: item.component.length });
     }
+  }
+  // 大簇需要更深的行。之前所有行等高，即使外层画布被拉长，19 个节点的大簇
+  // 仍会和 2 个节点的小簇拿到同样空间，所以拥挤始终留在顶部。
+  const rowWeight = (size: number) => size >= 10 ? 280 : size >= 7 ? 235 : size >= 4 ? 185 : 150;
+  const totalWeight = Math.max(1, bins.reduce((sum, bin) => sum + rowWeight(bin.largest), 0));
+  const nodes: GraphNode[] = [];
+  let rowTop = 0;
+  bins.forEach(bin => {
+    const rowHeight = rowWeight(bin.largest) / totalWeight;
+    let cursor = 0;
+    for (const component of bin.components) {
+      const item = localLayouts.find(entry => entry.component === component)!;
+      const local = item.local;
+      const boxW = item.slot;
+      for (const id of component) {
+        const p = local.get(id)!;
+        const x = cursor + p.x * boxW * 0.84 + boxW * 0.08;
+        const y = rowTop + p.y * rowHeight * 0.76 + rowHeight * 0.12;
+        nodes.push({ id, degree: degree.get(id) || 0, x: Math.min(0.975, Math.max(0.025, x)), y: Math.min(0.975, Math.max(0.025, y)) });
+      }
+      cursor += item.slot;
+    }
+    rowTop += rowHeight;
   });
   return nodes.sort((a, b) => a.id.localeCompare(b.id));
 }

@@ -38,19 +38,25 @@ test("pipeline writes are quarantined as hypothesis + related", async () => {
 });
 
 test("collector refuses internal addresses and non-http schemes", async () => {
-  // SSRF：采集器接受用户给的 URL，必须挡住内网和 file://。
+  // SSRF：路由只能通过共享的安全抓取器读 URL；共享抓取器必须挡住内网和 file://。
   const collect = await source("../app/api/collect/route.ts");
-  assert.match(collect, /function ssrfGuard/);
-  assert.match(collect, /只允许 http\/https 协议/);
-  assert.match(collect, /不允许请求内部地址/);
-  // 直接查源码里的字面量，别再套一层正则转义——私有段写的是 `127\.` 这种形式。
-  for (const segment of ["127\\.", "10\\.", "192\\.168\\.", "169\\.254\\.", "::1", "172\\."]) {
-    assert.ok(collect.includes(segment), `PRIVATE_IP 缺少 ${segment}`);
+  assert.match(collect, /import \{ canonicalUrl, fetchPublicDocument \}/);
+  assert.match(collect, /await fetchPublicDocument\(canonical\)/);
+  const fetcher = await source("../lib/research/fetch-document.ts");
+  assert.match(fetcher, /async function assertPublicUrl/);
+  assert.match(fetcher, /只允许 http\/https 协议/);
+  assert.match(fetcher, /不允许请求内部地址/);
+  // 地址段用数值分支判断，避免 IPv4 的字符串正则漏过映射型 IPv6。
+  for (const segment of ["a === 127", "a === 10", "a === 192 && b === 168", "a === 169 && b === 254", "::1", "a === 172 && b >= 16"]) {
+    assert.ok(fetcher.includes(segment), `私有地址防线缺少 ${segment}`);
   }
-  assert.match(collect, /host === "localhost"/);
+  assert.match(fetcher, /hostname\.toLowerCase\(\) === "localhost"/);
+  // 每次重定向都必须重新过 DNS 与内网检查，避免合法公网 URL 跳进内网。
+  assert.match(fetcher, /current = \(await assertPublicUrl\(new URL\(location, current\)\.toString\(\)\)\)\.toString\(\)/);
   // 抓取要有大小和时间上限，不能被一个巨型页面拖死。
-  assert.match(collect, /MAX_BYTES/);
-  assert.match(collect, /setTimeout\(\(\) => controller\.abort\(\)/);
+  assert.match(fetcher, /maxHtmlBytes/);
+  assert.match(fetcher, /maxPdfBytes/);
+  assert.match(fetcher, /setTimeout\(\(\) => controller\.abort\(\), timeoutMs\)/);
 });
 
 test("collector deduplicates by canonical url and logs every attempt", async () => {

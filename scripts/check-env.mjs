@@ -147,6 +147,30 @@ for (const p of configured) {
   });
 }
 
+// ── 联网研究通道 ───────────────────────────────────────────────────
+const researchProvider = (env.RESEARCH_SEARCH_PROVIDER || "auto").toLowerCase();
+if (!["auto", "xai", "openai", "anthropic", "bing"].includes(researchProvider)) {
+  fail("RESEARCH_SEARCH_PROVIDER", `不支持「${researchProvider}」；只能是 auto/xai/openai/anthropic/bing`);
+} else {
+  const resolved = researchProvider === "auto"
+    ? (env.XAI_API_KEY ? "xai" : env.OPENAI_API_KEY ? "openai" : "bing")
+    : researchProvider;
+  const missing = resolved === "xai" && !env.XAI_API_KEY
+    ? "XAI_API_KEY" : resolved === "openai" && !env.OPENAI_API_KEY
+      ? "OPENAI_API_KEY" : resolved === "anthropic" && !env.ANTHROPIC_API_KEY
+        ? "ANTHROPIC_API_KEY" : "";
+  if (missing) warn("RESEARCH_SEARCH_PROVIDER", `${resolved} 没有 ${missing}，运行时会回退 Bing`);
+  else ok("RESEARCH_SEARCH_PROVIDER", `${researchProvider} → ${resolved}`);
+}
+for (const [key, fallback] of [
+  ["XAI_BASE_URL", "https://api.x.ai/v1"],
+  ["OPENAI_BASE_URL", "https://api.openai.com/v1"],
+  ["ANTHROPIC_BASE_URL", "https://api.anthropic.com/v1"],
+]) {
+  try { new URL(env[key] || fallback); }
+  catch { fail(key, `不是合法地址：${JSON.stringify(env[key])}`); }
+}
+
 const timeout = env.ANALYZE_TIMEOUT_MS;
 if (!timeout) warn("ANALYZE_TIMEOUT_MS", "没给，用默认 120000ms");
 else if (!/^\d+$/.test(timeout) || Number(timeout) === 0) {

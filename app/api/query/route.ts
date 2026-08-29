@@ -5,7 +5,7 @@
 //   第一次 POST { fragment } → 若 needsConfirmation=true，返回解析结果让用户确认
 //   第二次 POST { fragment, entityName, dimensions, confirmed:true } → 执行搜索
 //
-// 搜索后端：cn.bing.com，带浏览器 UA（已验证可用）。
+// 搜索后端：优先 Grok / OpenAI 的 Responses Web Search；没有密钥或调用失败时退回 Bing。
 // 抽取：复用 /api/collect 的核心逻辑（SSRF 防御、去重、extractRelations），
 //       不经 HTTP 层以避免 Basic Auth 二次验证问题。
 export const dynamic = "force-dynamic";
@@ -22,6 +22,13 @@ import { ROSTER } from "../../../lib/fde-roster";
 import { gradeOfUrl } from "../../../lib/corpus-import";
 import type { DimensionId } from "../../../lib/fde-dimensions";
 import { resolveCompany } from "../../../lib/company-resolver";
+import { activeResearchProvider, researchSearchGapMs, searchWeb } from "../../../lib/research/provider";
+import { fetchPublicDocument } from "../../../lib/research/fetch-document";
+import {
+  beginResearchRun, completeResearchRun, linkRunSource, recordResearchClaim,
+  recordResearchSource, validationForClaim,
+} from "../../../lib/research/repository";
+import type { ClaimValidationStatus, ResearchProviderId } from "../../../lib/research/types";
 
 type ParseRequestBody = {
   fragment: string;
@@ -33,10 +40,6 @@ type ParseRequestBody = {
   searchQueries?: string[];
 };
 
-type SearchResult = { url: string; title: string; snippet: string };
-
-const BING_UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36";
-const BING_TIMEOUT_MS = 12_000;
 const FETCH_TIMEOUT_MS = 15_000;
 const EXTRACT_TIMEOUT_MS = 180_000;
 const MAX_URLS_PER_TASK = 3;
@@ -51,6 +54,9 @@ type QueryCandidate = Record<string, unknown> & {
   _duplicate?: boolean;
   _duplicateNote?: string;
   _dimension?: string;
+  _claimId?: string;
+  _validation?: ClaimValidationStatus;
+  _sourceCount?: number;
 };
 
 type QueryJob = {
@@ -74,6 +80,8 @@ type QueryJob = {
   failedPages: FailedPage[];
   skippedResults: SkippedResult[];
   gradeSummary: Record<string, number>;
+  provider: ResearchProviderId;
+  validationSummary: Record<string, number>;
   result?: Record<string, unknown>;
   error?: string;
 };
@@ -96,115 +104,26 @@ const queryJobs = globalThis.tokendanceQueryJobs ?? (globalThis.tokendanceQueryJ
  * 6 个搜索任务 → 最多 5 次等待 ≈ 100s。这是主动查询能接受的代价：
  * 拿回一次干净的结果，比拿回六次「别克世纪」有用。
  */
-const BING_GAP_MS = 20_000;
-
 const sleep = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
 
 /**
- * 距离上次 Bing 请求不足 BING_GAP_MS 的话，补足差额。
+ * 只有 Bing 回退路径需要补足请求间隔；托管搜索由服务商自己做限流。
  *
  * 关键是「补足」而不是「无条件等」：中间抓取和抽取本来就要花几十秒，
  * 那段时间同样在拉开两次 Bing 请求的间隔。无条件 sleep 会把这段时间白白叠加，
  * 一轮下来能超过 5 分钟——浏览器和反向代理会直接掐断连接。
  */
-async function throttleBing(lastAt: number): Promise<void> {
+async function throttleSearch(lastAt: number, previousProvider: ResearchProviderId): Promise<void> {
+  const gap = previousProvider === "bing" ? 20_000 : researchSearchGapMs();
+  if (!gap) return;
   if (!lastAt) return;
   const waited = Date.now() - lastAt;
-  if (waited < BING_GAP_MS) await sleep(BING_GAP_MS - waited);
+  if (waited < gap) await sleep(gap - waited);
 }
 
 // looksDegraded / relevantToEntity 放在 lib/query-intake.ts 里，
 // 和纠错、抽名、路由一起被 tests/query-intake.test.mjs 覆盖。
 // 这两条规则最容易悄悄失效（判错不报错，只是结果变垃圾），必须有测试。
-const STRIP_TAGS = /<(script|style|noscript|head|nav|footer|header|aside|iframe|svg)[^>]*>[\s\S]*?<\/\1>/gi;
-
-function decodeHtmlEntities(s: string) {
-  return s.replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#(\d+);/g, (_, n: string) => String.fromCharCode(Number(n)));
-}
-
-function stripToText(html: string): string {
-  return decodeHtmlEntities(html.replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ").trim();
-}
-
-/** Bing 搜索，返回前 N 条结果的 URL + 标题 + 摘要。
- *
- *  为什么用 cn.bing.com 而不是 Bing Search API：
- *  API 需要 Azure 账号，且有配额限制；cn.bing.com 在本环境已验证可通过 browser UA 访问。
- *  实测通过：见会话历史中的世纪互联 OCP 查询记录。
- *
- *  结果抽取：Bing 的 #b_results > li.b_algo，每条含 h2>a（标题+URL）和 .b_caption p（摘要）。
- */
-async function bingSearch(query: string, maxResults = MAX_URLS_PER_TASK): Promise<SearchResult[]> {
-  const url = `https://cn.bing.com/search?q=${encodeURIComponent(query)}&setlang=zh-CN&cc=CN`;
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), BING_TIMEOUT_MS);
-  try {
-    const resp = await fetch(url, {
-      signal: controller.signal,
-      headers: { "User-Agent": BING_UA, "Accept-Language": "zh-CN,zh;q=0.9", "Accept": "text/html" },
-    });
-    clearTimeout(timer);
-    const html = await resp.text();
-
-    // 抽取 .b_algo 条目：<h2><a href="...">标题</a></h2>...<p>摘要</p>
-    const results: SearchResult[] = [];
-    const algoPattern = /<li[^>]*class="[^"]*b_algo[^"]*"[^>]*>([\s\S]*?)<\/li>/gi;
-    let algoMatch: RegExpExecArray | null;
-    while ((algoMatch = algoPattern.exec(html)) !== null && results.length < maxResults) {
-      const block = algoMatch[1];
-      const hrefMatch = /href="(https?:\/\/[^"]+)"/.exec(block);
-      const titleMatch = /<h2[^>]*>([\s\S]*?)<\/h2>/i.exec(block);
-      const snippetMatch = /<p[^>]*class="[^"]*b_[^"]*"[^>]*>([\s\S]*?)<\/p>/i.exec(block)
-        || /<p[^>]*>([\s\S]*?)<\/p>/i.exec(block);
-      if (!hrefMatch) continue;
-      const href = hrefMatch[1];
-      // 过滤掉 Bing 自己的页面和广告
-      if (href.includes("bing.com") || href.includes("microsoft.com")) continue;
-      results.push({
-        url: href,
-        title: titleMatch ? stripToText(titleMatch[1]) : "",
-        snippet: snippetMatch ? stripToText(snippetMatch[1]).slice(0, 300) : "",
-      });
-    }
-    return results;
-  } catch {
-    clearTimeout(timer);
-    return [];
-  }
-}
-
-/** 抓取一个 URL 的文本正文，复用 collect route 里的 htmlToText 逻辑。 */
-async function fetchText(url: string): Promise<string | null> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-  try {
-    const resp = await fetch(url, {
-      signal: controller.signal,
-      headers: {
-        "User-Agent": BING_UA,
-        "Accept": "text/html,text/plain;q=0.9",
-        "Accept-Language": "zh-CN,zh;q=0.9",
-      },
-    });
-    clearTimeout(timer);
-    const ct = resp.headers.get("content-type") || "";
-    if (!ct.includes("text/html") && !ct.includes("text/plain")) return null;
-    const buf = await resp.arrayBuffer();
-    if (buf.byteLength > 500_000) return null;
-    const html = new TextDecoder("utf-8", { fatal: false }).decode(buf);
-    const body = html.replace(STRIP_TAGS, " ");
-    const paragraphs = [...body.matchAll(/<p\b[^>]*>([\s\S]*?)<\/p>/gi)]
-      .map(m => stripToText(m[1]))
-      .filter(t => t.length >= 24 && !/^(上一页|下一页|返回|分享|责编|编辑|来源)/.test(t));
-    const joined = paragraphs.join("\n\n");
-    return joined.length >= 180 ? joined : stripToText(body);
-  } catch {
-    clearTimeout(timer);
-    return null;
-  }
-}
-
 function ensureQuerySchema(db: ReturnType<typeof getDb>) {
   db.exec(`
     CREATE TABLE IF NOT EXISTS query_log (
@@ -245,11 +164,16 @@ async function executeQueryJob(job: QueryJob) {
     ensureQuerySchema(db);
     const config = resolveExtractConfig({});
     if (!config) throw new Error("抽取器未配置（EXTRACT_ENDPOINT / EXTRACT_API_KEY / EXTRACT_MODEL）");
+    beginResearchRun(db, {
+      id: job.id, fragment: job.fragment, entityName: job.entityName, dimensions: job.dimensions,
+      provider: job.provider, startedAt: job.startedAt,
+    });
 
     const allCandidates: QueryCandidate[] = [];
     let urlsFetched = 0;
     const processedUrls = new Set<string>();
-    let lastBingAt = 0;
+    let lastSearchAt = 0;
+    let lastSearchProvider: ResearchProviderId = job.provider;
 
     for (let taskIndex = 0; taskIndex < job.searchTasks.length; taskIndex++) {
       const task = job.searchTasks[taskIndex];
@@ -258,18 +182,19 @@ async function executeQueryJob(job: QueryJob) {
       job.progressText = `正在跑第 ${taskIndex + 1}/${job.searchTasks.length} 组搜索：${task.query}`;
       job.updatedAt = new Date().toISOString();
 
-      await throttleBing(lastBingAt);
-      lastBingAt = Date.now();
-      const results = await bingSearch(task.query);
+      await throttleSearch(lastSearchAt, lastSearchProvider);
+      lastSearchAt = Date.now();
+      const results = await searchWeb(task.query, MAX_URLS_PER_TASK);
+      lastSearchProvider = results[0]?.provider || job.provider;
 
-      if (looksDegraded(job.entityName, results)) {
+      if (job.provider === "bing" && looksDegraded(job.entityName, results)) {
         job.degradedQueries.push(task.query);
         continue;
       }
 
-      for (const result of results) {
+      for (let resultIndex = 0; resultIndex < results.length; resultIndex++) {
+        const result = results[resultIndex];
         if (processedUrls.has(result.url)) continue;
-        processedUrls.add(result.url);
         job.progressText = `正在处理 ${result.url}`;
         job.updatedAt = new Date().toISOString();
 
@@ -278,23 +203,45 @@ async function executeQueryJob(job: QueryJob) {
           continue;
         }
 
-        const text = await fetchText(result.url);
-        if (!text || text.length < 40) continue;
+        let document;
+        try {
+          document = await fetchPublicDocument(result.url, { timeoutMs: FETCH_TIMEOUT_MS, maxHtmlBytes: 500_000 });
+        } catch (error) {
+          job.failedPages.push({ url: result.url, reason: error instanceof Error ? error.message : "抓取失败" });
+          continue;
+        }
+        if (processedUrls.has(document.canonicalUrl)) continue;
+        processedUrls.add(document.canonicalUrl);
+        const text = document.text;
         urlsFetched++;
         job.urlsFetched = urlsFetched;
 
         const fingerprint = corpusFingerprint(text);
-        const sourceName = new URL(result.url).hostname;
+        const sourceName = new URL(document.canonicalUrl).hostname;
         const prior = priorSightings(db, fingerprint);
         const repeat = repeatVerdict(prior, sourceName);
-        const grade = gradeOfUrl(result.url);
+        const grade = gradeOfUrl(document.canonicalUrl);
+        const fetchedAt = new Date().toISOString();
+        const sourceId = recordResearchSource(db, {
+          url: document.canonicalUrl,
+          domain: sourceName,
+          title: document.title || result.title || sourceName,
+          grade,
+          contentHash: document.contentHash,
+          contentText: document.text,
+          fetchedAt,
+        });
+        linkRunSource(db, {
+          runId: job.id, sourceId, searchQuery: task.query, dimension: task.dimension,
+          rank: resultIndex + 1, provider: result.provider,
+        });
 
         if (repeat) {
           allCandidates.push({
             title: result.title || `来自 ${sourceName}`,
             evidence: result.snippet || text.slice(0, 400),
             source: sourceName,
-            sourceUrl: result.url,
+            sourceUrl: document.canonicalUrl,
             edges: [],
             suggestedRelation: "unclustered",
             origin: "pipeline",
@@ -307,14 +254,31 @@ async function executeQueryJob(job: QueryJob) {
         }
 
         try {
-          const extracted = await extractRelations(text, { ...config, source: sourceName, sourceUrl: result.url }, EXTRACT_TIMEOUT_MS);
+          const extracted = await extractRelations(text, { ...config, source: sourceName, sourceUrl: document.canonicalUrl }, EXTRACT_TIMEOUT_MS);
           const extractedAt = new Date().toISOString();
           recordSighting(db, {
-            fingerprint, sourceName, sourceUrl: result.url,
+            fingerprint, sourceName, sourceUrl: document.canonicalUrl,
             entryPoint: "query", seenAt: extractedAt, textLength: text.length, candidatesCount: extracted.length,
           });
           for (const candidate of extracted) {
-            allCandidates.push({ ...candidate, _grade: grade, _dimension: task.dimension });
+            const validation = recordResearchClaim(db, {
+              runId: job.id,
+              sourceId,
+              seenAt: extractedAt,
+              title: candidate.title,
+              evidence: candidate.evidence,
+              entityName: job.entityName,
+              dimension: task.dimension,
+              edges: candidate.edges,
+            });
+            allCandidates.push({
+              ...candidate,
+              _grade: grade,
+              _dimension: task.dimension,
+              _claimId: validation.claimId,
+              _validation: validation.status,
+              _sourceCount: validation.sourceCount,
+            });
           }
         } catch (err) {
           job.failedPages.push({ url: result.url, reason: err instanceof Error ? err.message : "抽取失败" });
@@ -322,18 +286,27 @@ async function executeQueryJob(job: QueryJob) {
       }
     }
 
-    job.candidates = allCandidates;
+    job.candidates = allCandidates.map(candidate => {
+      if (!candidate._claimId) return candidate;
+      const validation = validationForClaim(db, candidate._claimId);
+      return { ...candidate, _validation: validation.status, _sourceCount: validation.sourceCount };
+    });
     job.urlsFetched = urlsFetched;
     job.gradeSummary = {
-      statutory: allCandidates.filter(c => c._grade === "statutory").length,
-      independent: allCandidates.filter(c => c._grade === "independent").length,
-      self: allCandidates.filter(c => c._grade === "self").length,
-      unverified: allCandidates.filter(c => c._grade === "unverified").length,
+      statutory: job.candidates.filter(c => c._grade === "statutory").length,
+      independent: job.candidates.filter(c => c._grade === "independent").length,
+      self: job.candidates.filter(c => c._grade === "self").length,
+      unverified: job.candidates.filter(c => c._grade === "unverified").length,
+    };
+    job.validationSummary = {
+      corroborated: job.candidates.filter(c => c._validation === "corroborated").length,
+      singleSource: job.candidates.filter(c => c._validation === "single-source").length,
+      repeatedCopy: job.candidates.filter(c => c._validation === "repeated-copy").length,
     };
 
     const now = new Date().toISOString();
     db.prepare("INSERT INTO query_log (id, fragment, entity_name, dimensions, searched_at, urls_fetched, candidates_count) VALUES (?,?,?,?,?,?,?)").run(
-      `qry-${Date.now()}-${urlHash(job.entityName)}`, job.fragment, job.entityName, job.dimensions.join(","), now, urlsFetched, allCandidates.length,
+      job.id, job.fragment, job.entityName, job.dimensions.join(","), now, urlsFetched, job.candidates.length,
     );
     db.prepare(`
       INSERT INTO query_entities (id, name, first_seen, query_count)
@@ -353,7 +326,10 @@ async function executeQueryJob(job: QueryJob) {
       urlsFetched: job.urlsFetched,
       candidates: job.candidates,
       gradeSummary: job.gradeSummary,
+      validationSummary: job.validationSummary,
+      provider: job.provider,
     };
+    completeResearchRun(db, job.id, "done", now);
     job.status = "done";
     job.progressText = "查询完成";
     job.updatedAt = new Date().toISOString();
@@ -362,6 +338,7 @@ async function executeQueryJob(job: QueryJob) {
     job.error = error instanceof Error ? error.message : "查询失败";
     job.progressText = "查询失败";
     job.updatedAt = new Date().toISOString();
+    try { completeResearchRun(getDb(), job.id, "error", job.updatedAt, job.error); } catch { /* Run may have failed before schema creation. */ }
   }
 }
 
@@ -409,7 +386,8 @@ export async function POST(request: Request) {
         resolver,
         searchQueries: resolver.searchQueries,
         // 两条路取更长的那条，给用户一个不会越等越久的预计时间
-        estimatedSeconds: Math.round((Math.max(searchTasks.length, resolver.searchQueries.length) - 1) * BING_GAP_MS / 1000),
+        provider: activeResearchProvider(),
+        estimatedSeconds: Math.max(8, Math.round((Math.max(searchTasks.length, resolver.searchQueries.length) - 1) * researchSearchGapMs() / 1000)),
       });
     }
 
@@ -468,6 +446,8 @@ export async function POST(request: Request) {
       failedPages: [],
       skippedResults: [],
       gradeSummary: { statutory: 0, independent: 0, self: 0, unverified: 0 },
+      provider: activeResearchProvider(),
+      validationSummary: { corroborated: 0, singleSource: 0, repeatedCopy: 0 },
     };
     queryJobs.set(job.id, job);
     pruneJobs();
@@ -480,7 +460,8 @@ export async function POST(request: Request) {
       fragment,
       dimensions: dimensions.map(d => ({ id: d.id, reason: d.reason, confidence: d.confidence })),
       searchTasks: searchTasks.map(t => ({ query: t.query, kind: t.kind, dimension: t.dimension })),
-      estimatedSeconds: Math.round((searchTasks.length - 1) * BING_GAP_MS / 1000),
+      estimatedSeconds: Math.max(8, Math.round((searchTasks.length - 1) * researchSearchGapMs() / 1000)),
+      provider: job.provider,
     });
   } catch (error) {
     return Response.json({ error: error instanceof Error ? error.message : "查询失败" }, { status: 500 });

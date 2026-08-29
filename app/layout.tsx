@@ -7,15 +7,16 @@ const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"]
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://field.tokendance.cool"),
-  title: "TokenDance Field · 局部判断系统",
-  description: "把情报转化为有边界、可证伪、能行动、会校准的专家判断。",
+  title: { default: "FIELD · Evidence OS", template: "%s · FIELD" },
+  description: "把联网检索、来源原文、交叉验证与关系判断沉淀成可追溯的证据网络。",
   icons: { icon: "/favicon.svg", shortcut: "/favicon.svg" },
   openGraph: {
-    title: "TokenDance Field",
-    description: "情报进入具体世界，才成为判断。",
+    title: "FIELD · Evidence OS",
+    description: "从一句线索，到可追溯的证据网络。",
     images: [{ url: "/og.png", width: 1730, height: 909, alt: "TokenDance Field 局部判断闭环" }],
   },
-  twitter: { card: "summary_large_image", title: "TokenDance Field", description: "情报进入具体世界，才成为判断。", images: ["/og.png"] },
+  twitter: { card: "summary_large_image", title: "FIELD · Evidence OS", description: "从一句线索，到可追溯的证据网络。", images: ["/og.png"] },
+  robots: { index: false, follow: false },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

@@ -18,6 +18,7 @@ import type { ResolverResult } from "../../lib/company-resolver";
  */
 
 type SearchTaskView = { query: string; kind: "anchor" | "salient" | "dimension" | "clue"; dimension: string };
+type ResearchProvider = "xai" | "openai" | "anthropic" | "bing";
 
 type ParsePhase = {
   phase: "parse";
@@ -36,6 +37,7 @@ type ParsePhase = {
   searchQueries?: string[];
   /** 因为要避开搜索引擎限流，预计要等多久 */
   estimatedSeconds: number;
+  provider?: ResearchProvider;
 };
 
 type FailedPage = { url: string; reason: string };
@@ -53,8 +55,13 @@ type ResultPhase = {
   failedPages: FailedPage[];
   skippedResults: SkippedResult[];
   urlsFetched: number;
-  candidates: Array<Candidate & { _grade?: string; _duplicate?: boolean; _duplicateNote?: string; _dimension?: string }>;
+  candidates: Array<Candidate & {
+    _grade?: string; _duplicate?: boolean; _duplicateNote?: string; _dimension?: string;
+    _claimId?: string; _validation?: "single-source" | "corroborated" | "repeated-copy"; _sourceCount?: number;
+  }>;
   gradeSummary: Record<string, number>;
+  validationSummary?: Record<string, number>;
+  provider?: ResearchProvider;
 };
 
 type StartedPhase = {
@@ -65,6 +72,7 @@ type StartedPhase = {
   dimensions: Array<{ id: string; reason: string; confidence: string }>;
   searchTasks: SearchTaskView[];
   estimatedSeconds: number;
+  provider?: ResearchProvider;
 };
 
 type JobStatus = {
@@ -99,6 +107,12 @@ const GRADE_LABEL: Record<string, { short: string; tone: string }> = {
 };
 
 const CONFIDENCE_LABEL: Record<string, string> = { high: "强信号", medium: "弱信号", default: "默认" };
+const PROVIDER_LABEL: Record<string, string> = { xai: "Grok 联网搜索", openai: "OpenAI 联网搜索", anthropic: "Claude 联网搜索", bing: "Bing 网页检索" };
+const VALIDATION_LABEL: Record<string, { label: string; tone: string }> = {
+  corroborated: { label: "多源印证", tone: "verified" },
+  "repeated-copy": { label: "同稿转载", tone: "repeated" },
+  "single-source": { label: "单一来源", tone: "single" },
+};
 
 const EXAMPLES = [
   { label: "世纪互联 OPC", text: "世纪互联最近启动了opc设计建设" },
@@ -178,6 +192,7 @@ export function QueryIntake({ onAccept, initialFragment = "" }: { onAccept: (can
       } else {
         setResults(data);
         setPickedCandidates(new Set(data.candidates.map((_, i) => i).filter(i => !data.candidates[i]._duplicate)));
+        window.dispatchEvent(new Event("field:research-updated"));
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "查询失败");
@@ -197,6 +212,7 @@ export function QueryIntake({ onAccept, initialFragment = "" }: { onAccept: (can
       if (job.status === "done" && job.result) {
         setResults(job.result);
         setPickedCandidates(new Set(job.result.candidates.map((_, i) => i).filter(i => !job.result!.candidates[i]._duplicate)));
+        window.dispatchEvent(new Event("field:research-updated"));
         return;
       }
     }
@@ -396,8 +412,9 @@ export function QueryIntake({ onAccept, initialFragment = "" }: { onAccept: (can
         {/* 慢是故意的：连续快速请求会让搜索引擎静默降级成无关结果。
             不说清楚的话，等 100 秒会被当成卡死。 */}
         <small className="wait-note">
-          要 {parsed.estimatedSeconds || 20} 秒上下。每个搜索词之间必须隔 20 秒——
-          连着搜搜索引擎会静默返回无关结果，宁可慢也不能把垃圾抽进证据库。
+          {parsed.provider === "bing"
+            ? `预计 ${parsed.estimatedSeconds || 20} 秒起。网页回退通道会主动错开请求，避免搜索引擎静默返回无关结果。`
+            : `${PROVIDER_LABEL[parsed.provider || ""] || "联网检索"}会先给出来源，再逐页抓取和抽取；耗时取决于原网页与抽取模型。`}
         </small>
       </div>
     </section>}
@@ -415,7 +432,7 @@ export function QueryIntake({ onAccept, initialFragment = "" }: { onAccept: (can
       <small>
         {jobProgress
           ? `第 ${Math.min(jobProgress.completedTasks + 1, jobProgress.totalTasks)} / ${jobProgress.totalTasks} 组搜索词 · 已抓 ${jobProgress.urlsFetched} 个页面 · 已用 ${elapsed}s。任务在后台跑，页面关掉也不会被中断。`
-          : parsed ? `预计 ${estimatedSeconds}s 上下。每个搜索词之间隔 20 秒避开引擎限流，慢是故意的。` : "规则解析通常几秒钟完成。"}
+          : parsed ? `${PROVIDER_LABEL[parsed.provider || ""] || "联网检索"} · 预计至少 ${estimatedSeconds}s。页面会逐一经过安全抓取、去重与抽取。` : "规则解析通常几秒钟完成。"}
       </small>
     </div>}
 
@@ -426,11 +443,14 @@ export function QueryIntake({ onAccept, initialFragment = "" }: { onAccept: (can
           <small>
             抓了 {results.urlsFetched} 个页面 · 出 {results.candidates.length} 条候选 ·
             维度 {results.dimensions.map(d => DIMENSION_LABEL[d.id] || d.id).join(" / ")}
+            {results.provider && ` · ${PROVIDER_LABEL[results.provider]}`}
             {acceptedCount > 0 && ` · 本轮已收下 ${acceptedCount} 条`}
           </small>
         </div>
         <div className="results-actions">
           <div className="grade-summary">
+            {(results.validationSummary?.corroborated || 0) > 0 && <span className="validation-chip verified">多源印证 {results.validationSummary?.corroborated}</span>}
+            {(results.validationSummary?.repeatedCopy || 0) > 0 && <span className="validation-chip repeated">同稿转载 {results.validationSummary?.repeatedCopy}</span>}
             {Object.entries(results.gradeSummary).filter(([, n]) => n > 0).map(([grade, n]) =>
               <span key={grade} className={`grade-chip ${GRADE_LABEL[grade]?.tone || "none"}`}>
                 {GRADE_LABEL[grade]?.short || grade} {n}
@@ -505,6 +525,9 @@ export function QueryIntake({ onAccept, initialFragment = "" }: { onAccept: (can
                   {GRADE_LABEL[c._grade]?.short || c._grade}
                 </span>}
                 {c._dimension && <em className="dim-tag">{DIMENSION_LABEL[c._dimension] || c._dimension}</em>}
+                {c._validation && <em className={`validation-chip ${VALIDATION_LABEL[c._validation]?.tone || "single"}`}>
+                  {VALIDATION_LABEL[c._validation]?.label || c._validation}{(c._sourceCount || 0) > 1 ? ` · ${c._sourceCount} 源` : ""}
+                </em>}
                 {c._duplicate && <em className="dup-tag">重复</em>}
               </div>
               <p>{c.evidence}</p>
@@ -545,7 +568,7 @@ export function QueryIntake({ onAccept, initialFragment = "" }: { onAccept: (can
             <li><b>确认主体和维度</b><span>纠错与消歧结果必须由你点头才继续。</span></li>
             <li><b>收下可信候选</b><span>来源分级只说明出处，六道门仍要逐条过。</span></li>
           </ol>
-          <p className="query-guide-note">搜索是故意的慢：每个搜索词之间隔 20 秒，避免引擎静默返回垃圾结果。</p>
+          <p className="query-guide-note">来源不是答案。系统会打开原链接、保存正文指纹，并把“独立原文”和“同稿转载”分开计算。</p>
         </section>
 
         <section className="aside-card query-history">
