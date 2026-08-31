@@ -18,6 +18,8 @@ const sourceFiles = [
   "lib/dossier/snapshot.ts",
   "lib/dossier/html.ts",
   "lib/dossier/m5-repository.ts",
+  "lib/dossier/m6-repository.ts",
+  "lib/dossier/industry-weekly-html.ts",
   "lib/collectors/source-text.ts",
   "lib/collectors/job-posting.ts",
   "lib/collectors/procurement.ts",
@@ -30,6 +32,7 @@ const sourceFiles = [
   "lib/collectors/search-results.ts",
   "lib/collectors/vendor-case.ts",
   "lib/collectors/peer-case.ts",
+  "lib/collectors/industry-weekly.ts",
   "lib/generate/opportunities.ts",
   "lib/generate/entry-prep.ts",
 ];

@@ -123,6 +123,21 @@ export interface SearchCandidate {
   publishedAt: string;
 }
 
+export interface IndustryUpdateRecord {
+  id: string;
+  industryId: string;
+  foundAt: string;
+  kind: "peer_case" | "procurement" | "policy" | "vendor_move" | "target_action";
+  companyId: string;
+  summary: string;
+  promotedToEventId: string;
+}
+
+export interface IndustryWeeklyCollection {
+  sources: SourceInput[];
+  updates: Array<SourcedRecord<IndustryUpdateRecord>>;
+}
+
 export interface OrgUnitRecord {
   id: string;
   companyId: string;
