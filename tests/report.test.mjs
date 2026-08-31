@@ -195,6 +195,11 @@ test("知识图谱：给网络数据就出内联 SVG，且节点与边数量不�
   assert.match(page, /<section id="graph">/, "报告里没有知识图谱章节");
   assert.equal((page.match(/class="graph-node/g) || []).length, 4, "节点数量不对");
   assert.equal((page.match(/class="graph-link/g) || []).length, 2, "边数量不对");
+  assert.match(page, /data-graph-mode="focus"/, "图谱应默认提供关系焦点阅读方式");
+  assert.match(page, /data-graph-mode="overview"/, "图谱应保留全局概览");
+  assert.match(page, /id="graphSearch"/, "节点多时必须能按名称查找");
+  assert.equal((page.match(/data-source=/g) || []).length, 2, "交互重排需要保留每条边的端点");
+  assert.match(page, /class="graph-node[^"\n]*is-focus/, "默认应有一个明确的焦点节点");
   assert.doesNotMatch(page, /<script[^>]+src=/i, "知识图谱不得引入外部脚本");
 });
 

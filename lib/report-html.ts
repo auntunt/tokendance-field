@@ -279,29 +279,65 @@ footer.foot p{margin:0 0 8px;max-width:80ch}
 .card.hidden{display:none}
 #cards .roster-empty{padding:18px;border:1px dashed var(--line);color:var(--muted);font-size:13px}
 /* ---- 知识图谱 ---- */
-.graph-controls{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 10px}
-.graph-controls .rt-link{margin-left:0;height:30px;padding:0 11px;background:transparent;cursor:pointer;font-size:11px}
+.graph-controls{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:16px 0 10px}
+.graph-controls .rt-link{margin-left:0;height:32px;padding:0 11px;background:transparent;cursor:pointer;font-size:11px}
 .graph-controls .rt-link.active{border-color:var(--accent);background:rgba(255,173,33,.1);color:var(--accent-soft)}
+.graph-mode-controls,.graph-filter-controls{display:flex;gap:6px}
+.graph-filter-controls{padding-left:8px;border-left:1px solid var(--line)}
+.graph-search{height:32px;min-width:190px;flex:1 1 220px;display:flex;align-items:center;gap:7px;padding:0 10px;border:1px solid var(--line);background:var(--panel-2);color:var(--muted-2)}
+.graph-search:focus-within{border-color:rgba(255,173,33,.55)}
+.graph-search input{min-width:0;width:100%;border:0;outline:0;background:transparent;color:var(--text);font-size:12px}
+.graph-search input::placeholder{color:var(--muted-2)}
 .graph-legend{display:flex;flex-wrap:wrap;gap:14px;margin:0 0 12px;color:var(--muted);font-size:12px}
 .graph-legend span{display:inline-flex;align-items:center;gap:7px}
-.graph-legend i{display:inline-block;width:12px;height:12px;border-radius:50%}
-.graph-layout{display:grid;grid-template-columns:230px minmax(0,1fr);gap:12px;align-items:stretch}
-.graph-readout{border:1px solid var(--line);background:var(--panel);padding:15px 16px;font-size:12px}
-.graph-readout h3{margin:0 0 13px;color:var(--strong);font-size:14px}
-.graph-readout h4{margin:16px 0 7px;color:var(--label);font:600 11px/1 ui-monospace,monospace;letter-spacing:.08em}
+.graph-legend i{display:inline-block;width:10px;height:10px;border-radius:50%}
+.graph-layout{display:grid;grid-template-columns:270px minmax(0,1fr);gap:12px;align-items:stretch}
+.graph-readout{position:relative;border:1px solid var(--line);background:linear-gradient(180deg,rgba(255,173,33,.025),transparent 30%),var(--panel);padding:18px;font-size:12px}
+.gr-kicker{margin-bottom:10px;color:var(--accent);font:700 10px/1 ui-monospace,monospace;letter-spacing:.13em}
+.graph-readout h3{margin:0;color:var(--strong);font-size:19px;line-height:1.2;letter-spacing:-.02em}
+.gr-meta{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin:9px 0 15px;color:var(--muted)}
+.gr-meta span{padding:4px 6px;border:1px solid var(--line-soft);color:var(--label);font:600 10px/1 ui-monospace,monospace}
+.graph-readout h4{margin:17px 0 8px;color:var(--label);font:600 10px/1 ui-monospace,monospace;letter-spacing:.1em}
 .graph-readout ol{list-style:none;margin:0;padding:0;display:grid;gap:5px}
-.graph-readout li{display:flex;align-items:center;justify-content:space-between;gap:8px;color:var(--muted)}
+.graph-readout li{min-height:24px;display:grid;grid-template-columns:7px minmax(0,1fr) auto;align-items:center;gap:8px;color:var(--muted)}
+.graph-readout li i{width:6px;height:6px;border-radius:50%;background:var(--muted-2)}
+.graph-readout li.investor i{background:var(--accent)}
+.graph-readout li.background i{background:#56c8d8}
 .graph-readout li b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text);font-weight:500}
-.graph-readout li span{color:var(--accent);font:700 12px/1 ui-monospace,monospace}
-.gr-stat{margin-bottom:13px;padding:11px 12px;border:1px solid var(--line-soft);background:var(--panel-2)}
-.gr-stat b{display:block;color:var(--accent);font:700 22px/1 ui-monospace,monospace}
-.gr-stat span{display:block;margin-top:7px;color:var(--muted);font-size:11px}
-.kgraph{border:1px solid var(--line);background:radial-gradient(circle at 50% 48%,rgba(255,173,33,.035),transparent 55%),var(--panel-2);overflow:hidden}
+.graph-readout li span{color:var(--muted);font:650 10px/1 ui-monospace,monospace}
+.gr-stat{display:grid;grid-template-columns:auto 1fr;align-items:center;gap:11px;margin-bottom:14px;padding:11px 12px;border:1px solid var(--line-soft);background:var(--panel-2)}
+.gr-stat b{color:var(--accent);font:700 24px/1 ui-monospace,monospace}
+.gr-stat span{color:var(--muted);font-size:11px;line-height:1.45}
+.gr-more{min-height:31px;margin:9px 0 0;color:var(--muted-2);font-size:11px;line-height:1.45}
+.gr-jump{width:100%;margin-top:13px;justify-content:center;cursor:pointer;background:rgba(255,173,33,.04)}
+.gr-network{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;margin-top:17px;border:1px solid var(--line-soft);background:var(--line-soft)}
+.gr-network span{padding:9px 5px;background:var(--panel-2);color:var(--muted-2);font-size:9px;text-align:center}
+.gr-network b{display:block;margin-bottom:4px;color:var(--label);font:700 12px/1 ui-monospace,monospace}
+.kgraph{position:relative;min-height:600px;border:1px solid var(--line);background-image:linear-gradient(rgba(255,255,255,.017) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.017) 1px,transparent 1px),radial-gradient(circle at 50% 50%,rgba(255,173,33,.045),transparent 34%);background-size:44px 44px,44px 44px,auto;background-color:var(--panel-2);overflow:hidden}
 @media(max-width:760px){.graph-layout{grid-template-columns:1fr}.graph-readout{order:2}}
-.kgraph svg{display:block;width:100%;height:auto;min-height:420px}
-.graph-node text{fill:var(--text);font-size:10px;font-family:ui-monospace,monospace;paint-order:stroke;stroke:var(--bg);stroke-width:3px}
-.graph-link{transition:opacity .2s}
-.graph-link.graph-link-hidden{opacity:0}
+.kgraph svg{display:block;width:100%;height:100%;min-height:600px}
+.graph-lane-label{fill:var(--muted-2);font:700 10px/1 ui-monospace,monospace;letter-spacing:.13em;opacity:0;transition:opacity .2s}
+.graph-focus-halo{pointer-events:none;transform-box:view-box;transform-origin:0 0;transition:transform .38s cubic-bezier(.2,.72,.2,1),opacity .2s}
+.graph-focus-halo circle{fill:none;stroke:rgba(255,173,33,.2)}
+.graph-focus-halo circle:last-child{stroke:rgba(255,173,33,.08)}
+.graph-node{cursor:pointer;transform-box:view-box;transform-origin:0 0;transition:transform .38s cubic-bezier(.2,.72,.2,1),opacity .25s,filter .2s}
+.graph-node .gn-hit{fill:transparent}
+.graph-node .gn-dot{stroke:rgba(255,255,255,.34);stroke-width:1;transition:r .22s,stroke .2s,opacity .2s}
+.graph-node text{fill:var(--text);font-size:10px;font-family:ui-monospace,monospace;paint-order:stroke;stroke:var(--bg);stroke-width:4px;opacity:0;pointer-events:none;transition:opacity .2s}
+.graph-node.is-focus .gn-dot{stroke:#fff;stroke-width:1.7;filter:drop-shadow(0 0 8px rgba(255,173,33,.45))}
+.graph-node.is-focus text,.kgraph.is-focus-mode .graph-node.is-neighbor.is-key text,.graph-node:hover text,.graph-node:focus text{opacity:1}
+.graph-node.is-dim{opacity:.14}
+.graph-node:hover,.graph-node:focus{opacity:1;filter:brightness(1.2);outline:none}
+.graph-link{fill:none;opacity:.025;pointer-events:none;transition:opacity .22s,stroke-width .22s}
+.graph-link.is-focus-link{opacity:.68;stroke-width:1.45}
+.graph-link.graph-link-hidden{opacity:0!important}
+.kgraph.is-focus-mode .graph-link:not(.is-focus-link){opacity:0}
+.kgraph.is-overview-mode .graph-lane-label{opacity:1}
+.kgraph.is-overview-mode .graph-focus-halo{opacity:0}
+.kgraph.is-overview-mode .graph-node{opacity:.7}
+.kgraph.is-overview-mode .graph-node.is-dim{opacity:.12}
+.kgraph.is-overview-mode .graph-link{opacity:.11}
+.kgraph.is-overview-mode .graph-link.graph-link-hidden{opacity:0}
 
 /* ---- 共现聚簇 ---- */
 .cluster-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px}
@@ -329,12 +365,12 @@ footer.foot p{margin:0 0 8px;max-width:80ch}
 .tl-dot:hover{opacity:1;stroke:#fff;stroke-width:1}
 .timeline-legend{display:flex;align-items:center;gap:8px;margin-top:8px;color:var(--muted);font-size:12px}
 .timeline-legend i{width:22px;height:7px;border-radius:99px;background:linear-gradient(90deg,rgba(255,173,33,.25),var(--accent))}
-.graph-node[data-jump-card],.co-node[data-jump-card]{cursor:pointer}
-.graph-node[data-jump-card]:hover circle,.co-node[data-jump-card]:hover circle{stroke:#fff;stroke-width:2}
+.co-node[data-jump-card]{cursor:pointer}
+.co-node[data-jump-card]:hover circle{stroke:#fff;stroke-width:2}
 .card-flash{animation:cardflash 1.6s ease-out}
 @keyframes cardflash{0%{box-shadow:0 0 0 3px var(--accent);background:rgba(255,173,33,.12)}100%{box-shadow:none}}
-@media print{.kgraph{background:#fff}.graph-node text{fill:#14181d;stroke:#fff}}
-@media(max-width:640px){.kgraph svg{min-height:280px}}
+@media print{.kgraph{background:#fff}.graph-node text{fill:#14181d;stroke:#fff}.graph-focus-halo circle{stroke:#c27c00}}
+@media(max-width:640px){.graph-controls{align-items:stretch}.graph-mode-controls,.graph-filter-controls{width:100%}.graph-filter-controls{padding-left:0;border-left:0}.graph-controls .rt-link{flex:1;justify-content:center}.graph-search{width:100%}.kgraph,.kgraph svg{min-height:460px}.graph-node text{font-size:9px}.gr-network{margin-bottom:0}}
 @media print{.report-toolbar{display:none}.card.hidden{display:block!important}}
 `;
 
@@ -392,25 +428,243 @@ const REPORT_SCRIPT = `
     details.open = expandedAll;
     apply();
   });
-  var graphButtons = Array.prototype.slice.call(document.querySelectorAll('[data-graph-filter]'));
-  var graphLinks = Array.prototype.slice.call(document.querySelectorAll('.graph-link'));
-  function applyGraph(){
-    var active = 'all';
-    graphButtons.forEach(function(button){
-      if(button.classList.contains('active')) active = button.getAttribute('data-graph-filter') || 'all';
-    });
-    graphLinks.forEach(function(line){
-      var kind = line.getAttribute('data-kind') || '';
-      line.classList.toggle('graph-link-hidden', active !== 'all' && kind !== active);
+  var graphCanvas = document.querySelector('.kgraph[data-initial-focus]');
+  var graphFilterButtons = Array.prototype.slice.call(document.querySelectorAll('[data-graph-filter]'));
+  var graphModeButtons = Array.prototype.slice.call(document.querySelectorAll('[data-graph-mode]'));
+  var graphNodes = graphCanvas ? Array.prototype.slice.call(graphCanvas.querySelectorAll('.graph-node')) : [];
+  var graphLinks = graphCanvas ? Array.prototype.slice.call(graphCanvas.querySelectorAll('.graph-link')) : [];
+  var graphSearch = document.getElementById('graphSearch');
+  var graphFocusName = document.getElementById('graphFocusName');
+  var graphFocusMeta = document.getElementById('graphFocusMeta');
+  var graphFocusDegree = document.getElementById('graphFocusDegree');
+  var graphFocusConnections = document.getElementById('graphFocusConnections');
+  var graphFocusMore = document.getElementById('graphFocusMore');
+  var graphJump = document.getElementById('graphJump');
+  var graphHalo = document.getElementById('graphFocusHalo');
+  var graphMode = 'focus';
+  var graphFilter = 'all';
+  var graphFocus = graphCanvas ? graphCanvas.getAttribute('data-initial-focus') || '' : '';
+  var graphNodeById = new Map();
+  graphNodes.forEach(function(node){ graphNodeById.set(node.getAttribute('data-id') || '', node); });
+
+  function graphTypeLabel(type){
+    return type === 'company' ? '公司' : type === 'investor' ? '投资方' : '背景标签';
+  }
+  function graphEligibleLinks(){
+    return graphLinks.filter(function(link){
+      return graphFilter === 'all' || link.getAttribute('data-kind') === graphFilter;
     });
   }
-  graphButtons.forEach(function(button){
-    button.addEventListener('click', function(){
-      graphButtons.forEach(function(item){ item.classList.remove('active'); });
-      button.classList.add('active');
-      applyGraph();
+  function graphOverviewPosition(items, index, left, right){
+    var rows = Math.min(19, Math.ceil(items.length / 6));
+    var columns = Math.max(1, Math.ceil(items.length / Math.max(rows, 1)));
+    var column = Math.floor(index / Math.max(rows, 1));
+    var row = index % Math.max(rows, 1);
+    var x = columns === 1 ? (left + right) / 2 : left + column * ((right - left) / (columns - 1));
+    var y = rows === 1 ? 330 : 72 + row * (516 / (rows - 1));
+    return {x:x,y:y};
+  }
+  function graphPerimeterPosition(index, total){
+    var rings = Math.min(4, Math.max(1, Math.ceil(total / 58)));
+    var perRing = Math.ceil(total / rings);
+    var ring = Math.floor(index / perRing);
+    var slot = index % perRing;
+    var count = Math.min(perRing, total - ring * perRing);
+    var angle = (slot / Math.max(count, 1)) * Math.PI * 2 - Math.PI / 2 + ring * .09;
+    return {x:500 + Math.cos(angle) * (447 - ring * 35),y:330 + Math.sin(angle) * (292 - ring * 25)};
+  }
+  function graphPath(a, b, overview, seed){
+    if(overview){
+      return 'M ' + a.x.toFixed(1) + ' ' + a.y.toFixed(1) + ' C 455 ' + a.y.toFixed(1) + ', 545 ' + b.y.toFixed(1) + ', ' + b.x.toFixed(1) + ' ' + b.y.toFixed(1);
+    }
+    var dx = b.x - a.x;
+    var dy = b.y - a.y;
+    var length = Math.max(1, Math.sqrt(dx * dx + dy * dy));
+    var bend = ((seed % 7) - 3) * 5;
+    var mx = (a.x + b.x) / 2 - dy / length * bend;
+    var my = (a.y + b.y) / 2 + dx / length * bend;
+    return 'M ' + a.x.toFixed(1) + ' ' + a.y.toFixed(1) + ' Q ' + mx.toFixed(1) + ' ' + my.toFixed(1) + ', ' + b.x.toFixed(1) + ' ' + b.y.toFixed(1);
+  }
+  function updateGraphReadout(eligible){
+    var focusNode = graphNodeById.get(graphFocus);
+    if(!focusNode) return;
+    var connections = eligible.filter(function(link){
+      return link.getAttribute('data-source') === graphFocus || link.getAttribute('data-target') === graphFocus;
+    }).map(function(link){
+      var source = link.getAttribute('data-source') || '';
+      var target = link.getAttribute('data-target') || '';
+      var other = graphNodeById.get(source === graphFocus ? target : source);
+      return {node:other,kind:link.getAttribute('data-kind') || ''};
+    }).filter(function(item){ return Boolean(item.node); });
+    connections.sort(function(a,b){
+      return parseInt(b.node.getAttribute('data-degree') || '0',10) - parseInt(a.node.getAttribute('data-degree') || '0',10) ||
+        (a.node.getAttribute('data-label') || '').localeCompare(b.node.getAttribute('data-label') || '', 'zh');
+    });
+    if(graphFocusName) graphFocusName.textContent = focusNode.getAttribute('data-label') || '未命名节点';
+    if(graphFocusDegree) graphFocusDegree.textContent = String(connections.length);
+    if(graphFocusMeta){
+      graphFocusMeta.textContent = '';
+      var meta = [graphTypeLabel(focusNode.getAttribute('data-type') || '')];
+      var sectorValue = focusNode.getAttribute('data-sector') || '';
+      var cityValue = focusNode.getAttribute('data-city') || '';
+      if(sectorValue) meta.push(sectorValue);
+      if(cityValue) meta.push(cityValue);
+      meta.forEach(function(value){
+        var chip = document.createElement('span');
+        chip.textContent = value;
+        graphFocusMeta.appendChild(chip);
+      });
+    }
+    if(graphFocusConnections){
+      graphFocusConnections.textContent = '';
+      connections.slice(0,8).forEach(function(item){
+        var li = document.createElement('li');
+        li.className = item.kind;
+        var dot = document.createElement('i');
+        var name = document.createElement('b');
+        var kind = document.createElement('span');
+        name.textContent = item.node.getAttribute('data-label') || '';
+        kind.textContent = item.kind === 'investor' ? '投资' : '背景';
+        li.appendChild(dot); li.appendChild(name); li.appendChild(kind);
+        graphFocusConnections.appendChild(li);
+      });
+    }
+    if(graphFocusMore){
+      graphFocusMore.textContent = connections.length > 8 ? '另有 ' + (connections.length - 8) + ' 条直接关系。搜索或点选节点可继续展开。' :
+        connections.length ? '点选任意相邻节点，继续沿关系阅读。' : '当前筛选下没有直接关系，可切换关系类型。';
+    }
+    if(graphJump){
+      var cardId = focusNode.getAttribute('data-card-id') || '';
+      graphJump.hidden = !cardId;
+      if(cardId) graphJump.setAttribute('data-jump-card', cardId);
+      else graphJump.removeAttribute('data-jump-card');
+    }
+  }
+  function renderGraph(){
+    if(!graphCanvas || !graphNodes.length) return;
+    var eligible = graphEligibleLinks();
+    var positions = new Map();
+    var visibleDegree = new Map();
+    eligible.forEach(function(link){
+      var source = link.getAttribute('data-source') || '';
+      var target = link.getAttribute('data-target') || '';
+      visibleDegree.set(source,(visibleDegree.get(source) || 0) + 1);
+      visibleDegree.set(target,(visibleDegree.get(target) || 0) + 1);
+    });
+    var neighbors = [];
+    var neighborIds = new Set();
+    eligible.forEach(function(link){
+      var source = link.getAttribute('data-source') || '';
+      var target = link.getAttribute('data-target') || '';
+      var id = source === graphFocus ? target : target === graphFocus ? source : '';
+      if(id && !neighborIds.has(id)){
+        neighborIds.add(id);
+        var neighbor = graphNodeById.get(id);
+        if(neighbor) neighbors.push(neighbor);
+      }
+    });
+    neighbors.sort(function(a,b){
+      return parseInt(b.getAttribute('data-degree') || '0',10) - parseInt(a.getAttribute('data-degree') || '0',10) ||
+        (a.getAttribute('data-label') || '').localeCompare(b.getAttribute('data-label') || '', 'zh');
+    });
+    if(graphMode === 'overview'){
+      var companyNodes = graphNodes.filter(function(node){ return node.getAttribute('data-type') === 'company'; });
+      var hubNodes = graphNodes.filter(function(node){ return node.getAttribute('data-type') !== 'company'; });
+      companyNodes.forEach(function(node,index){ positions.set(node.getAttribute('data-id') || '',graphOverviewPosition(companyNodes,index,68,370)); });
+      hubNodes.forEach(function(node,index){ positions.set(node.getAttribute('data-id') || '',graphOverviewPosition(hubNodes,index,630,932)); });
+    } else {
+      positions.set(graphFocus,{x:500,y:330});
+      var split = neighbors.length > 14 ? Math.ceil(neighbors.length / 2) : neighbors.length;
+      neighbors.forEach(function(node,index){
+        var outer = neighbors.length > 14 && index >= split;
+        var slot = outer ? index - split : index;
+        var count = outer ? neighbors.length - split : split;
+        var angle = (slot / Math.max(count,1)) * Math.PI * 2 - Math.PI / 2 + (outer ? .11 : 0);
+        var rx = outer ? 345 : (neighbors.length > 14 ? 225 : 275);
+        var ry = outer ? 245 : (neighbors.length > 14 ? 160 : 195);
+        positions.set(node.getAttribute('data-id') || '',{x:500 + Math.cos(angle) * rx,y:330 + Math.sin(angle) * ry});
+      });
+      var others = graphNodes.filter(function(node){
+        var id = node.getAttribute('data-id') || '';
+        return id !== graphFocus && !neighborIds.has(id);
+      });
+      others.forEach(function(node,index){ positions.set(node.getAttribute('data-id') || '',graphPerimeterPosition(index,others.length)); });
+    }
+    var keyIds = new Set(neighbors.slice(0,10).map(function(node){ return node.getAttribute('data-id') || ''; }));
+    graphNodes.forEach(function(node){
+      var id = node.getAttribute('data-id') || '';
+      var point = positions.get(id) || {x:500,y:330};
+      node.style.transform = 'translate(' + point.x.toFixed(1) + 'px,' + point.y.toFixed(1) + 'px)';
+      node.classList.toggle('is-focus',id === graphFocus);
+      node.classList.toggle('is-neighbor',neighborIds.has(id));
+      node.classList.toggle('is-key',keyIds.has(id));
+      node.classList.toggle('is-dim',graphMode === 'focus' ? id !== graphFocus && !neighborIds.has(id) : !visibleDegree.has(id));
+      node.setAttribute('aria-pressed',id === graphFocus ? 'true' : 'false');
+    });
+    graphLinks.forEach(function(link,index){
+      var source = link.getAttribute('data-source') || '';
+      var target = link.getAttribute('data-target') || '';
+      var hidden = graphFilter !== 'all' && link.getAttribute('data-kind') !== graphFilter;
+      var focused = !hidden && (source === graphFocus || target === graphFocus);
+      link.classList.toggle('graph-link-hidden',hidden);
+      link.classList.toggle('is-focus-link',focused);
+      var a = positions.get(source), b = positions.get(target);
+      if(a && b) link.setAttribute('d',graphPath(a,b,graphMode === 'overview',index));
+    });
+    graphCanvas.classList.toggle('is-focus-mode',graphMode === 'focus');
+    graphCanvas.classList.toggle('is-overview-mode',graphMode === 'overview');
+    if(graphHalo){
+      var focusPoint = positions.get(graphFocus) || {x:500,y:330};
+      graphHalo.style.transform = 'translate(' + focusPoint.x.toFixed(1) + 'px,' + focusPoint.y.toFixed(1) + 'px)';
+    }
+    updateGraphReadout(eligible);
+  }
+  graphFilterButtons.forEach(function(button){
+    button.addEventListener('click',function(){
+      graphFilter = button.getAttribute('data-graph-filter') || 'all';
+      graphFilterButtons.forEach(function(item){ item.classList.toggle('active',item === button); });
+      renderGraph();
     });
   });
+  graphModeButtons.forEach(function(button){
+    button.addEventListener('click',function(){
+      graphMode = button.getAttribute('data-graph-mode') || 'focus';
+      graphModeButtons.forEach(function(item){ item.classList.toggle('active',item === button); });
+      renderGraph();
+    });
+  });
+  graphNodes.forEach(function(node){
+    function selectGraphNode(){
+      graphFocus = node.getAttribute('data-id') || graphFocus;
+      graphMode = 'focus';
+      graphModeButtons.forEach(function(item){ item.classList.toggle('active',item.getAttribute('data-graph-mode') === 'focus'); });
+      if(graphSearch) graphSearch.value = node.getAttribute('data-label') || '';
+      renderGraph();
+    }
+    node.addEventListener('click',function(event){ event.stopPropagation(); selectGraphNode(); });
+    node.addEventListener('keydown',function(event){
+      if(event.key === 'Enter' || event.key === ' '){ event.preventDefault(); selectGraphNode(); }
+    });
+  });
+  function focusGraphSearch(){
+    if(!graphSearch) return;
+    var query = graphSearch.value.trim().toLowerCase();
+    if(!query) return;
+    var match = graphNodes.find(function(node){ return (node.getAttribute('data-label') || '').toLowerCase() === query; }) ||
+      graphNodes.find(function(node){ return (node.getAttribute('data-label') || '').toLowerCase().indexOf(query) >= 0; });
+    if(match){
+      graphFocus = match.getAttribute('data-id') || graphFocus;
+      graphMode = 'focus';
+      graphModeButtons.forEach(function(item){ item.classList.toggle('active',item.getAttribute('data-graph-mode') === 'focus'); });
+      graphSearch.value = match.getAttribute('data-label') || '';
+      renderGraph();
+    }
+  }
+  if(graphSearch){
+    graphSearch.addEventListener('change',focusGraphSearch);
+    graphSearch.addEventListener('keydown',function(event){ if(event.key === 'Enter'){ event.preventDefault(); focusGraphSearch(); } });
+  }
+  renderGraph();
   function jumpToCard(id){
     if(!id) return;
     if(search) search.value = '';
@@ -1000,18 +1254,18 @@ function renderGaps(profiles: CompanyProfile[]): string {
 
 
 /** 知识图谱。数据来自原语料的 network 字段：公司 → 投资方 / 背景标签。
- *  布局是确定性的同心圆：公司在外环、投资方和背景标签在内环，
- *  高连接度的枢纽更大、更靠近中心，边按关系类型着色。
- *  全部是内联 SVG，不依赖任何外部图库。 */
+ *  默认不是把全部边摊成一团，而是选一个高连接公司作为焦点，只强调它的一跳关系；
+ *  点击或搜索任意节点即可重排。需要鸟瞰时再切到左右分栏的全局概览。
+ *  所有节点和边仍完整留在内联 SVG 里，不依赖外部图库，也不拿可读性换数据缩水。 */
 function renderKnowledgeGraph(network: ReportNetwork | undefined, profiles: CompanyProfile[]): string {
   if (!network?.nodes?.length) {
     return `<section id="graph"><h2>知识图谱</h2><p class="lede">这一版没有附带网络关系数据。带 network 字段重跑即可生成。</p></section>`;
   }
 
   const nodes = network.nodes;
-  const links = network.links.filter(link =>
-    nodes.some(n => n.id === link.source) && nodes.some(n => n.id === link.target)
-  );
+  const nodeIds = new Set(nodes.map(node => node.id));
+  const nodeById = new Map(nodes.map(node => [node.id, node]));
+  const links = network.links.filter(link => nodeIds.has(link.source) && nodeIds.has(link.target));
   const degree = new Map<string, number>();
   for (const link of links) {
     degree.set(link.source, (degree.get(link.source) || 0) + 1);
@@ -1035,20 +1289,50 @@ function renderKnowledgeGraph(network: ReportNetwork | undefined, profiles: Comp
     return SECTOR_COLORS[Math.floor(hash(sector) * SECTOR_COLORS.length)];
   };
 
-  const place = (items: ReportNetworkNode[], rx: number, ry: number) => items.map((node, index) => {
-    const angle = (index / Math.max(items.length, 1)) * Math.PI * 2 - Math.PI / 2;
-    return { node, x: 500 + Math.cos(angle) * rx, y: 350 + Math.sin(angle) * ry };
-  });
-  const companyPos = place(companies, 420, 275);
-  const hubPos = place(hubs, 235, 160);
+  const allNodes = [...companies, ...hubs];
+  const initialFocus = companies.slice().sort((a, b) =>
+    (degree.get(b.id) || 0) - (degree.get(a.id) || 0) || a.label.localeCompare(b.label, "zh"))[0] || allNodes[0];
+  const initialLinks = links.filter(link => link.source === initialFocus.id || link.target === initialFocus.id);
+  const neighborIds = new Set(initialLinks.map(link => link.source === initialFocus.id ? link.target : link.source));
+  const initialNeighbors = allNodes.filter(node => neighborIds.has(node.id)).sort((a, b) =>
+    (degree.get(b.id) || 0) - (degree.get(a.id) || 0) || a.label.localeCompare(b.label, "zh"));
   const pos = new Map<string, { x: number; y: number }>();
-  for (const item of [...companyPos, ...hubPos]) pos.set(item.node.id, item);
+  pos.set(initialFocus.id, { x: 500, y: 330 });
+  const split = initialNeighbors.length > 14 ? Math.ceil(initialNeighbors.length / 2) : initialNeighbors.length;
+  initialNeighbors.forEach((node, index) => {
+    const outer = initialNeighbors.length > 14 && index >= split;
+    const slot = outer ? index - split : index;
+    const count = outer ? initialNeighbors.length - split : split;
+    const angle = (slot / Math.max(count, 1)) * Math.PI * 2 - Math.PI / 2 + (outer ? .11 : 0);
+    const rx = outer ? 345 : (initialNeighbors.length > 14 ? 225 : 275);
+    const ry = outer ? 245 : (initialNeighbors.length > 14 ? 160 : 195);
+    pos.set(node.id, { x: 500 + Math.cos(angle) * rx, y: 330 + Math.sin(angle) * ry });
+  });
+  const contextNodes = allNodes.filter(node => node.id !== initialFocus.id && !neighborIds.has(node.id));
+  const rings = Math.min(4, Math.max(1, Math.ceil(contextNodes.length / 58)));
+  const perRing = Math.ceil(contextNodes.length / rings);
+  contextNodes.forEach((node, index) => {
+    const ring = Math.floor(index / perRing);
+    const slot = index % perRing;
+    const count = Math.min(perRing, contextNodes.length - ring * perRing);
+    const angle = (slot / Math.max(count, 1)) * Math.PI * 2 - Math.PI / 2 + ring * .09;
+    pos.set(node.id, {
+      x: 500 + Math.cos(angle) * (447 - ring * 35),
+      y: 330 + Math.sin(angle) * (292 - ring * 25),
+    });
+  });
 
-  const linkSvg = links.map((link) => {
+  const linkSvg = links.map((link, index) => {
     const a = pos.get(link.source), b = pos.get(link.target);
     if (!a || !b) return "";
     const color = link.kind === "investor" ? "rgba(255,173,33,.18)" : "rgba(86,200,216,.15)";
-    return `<line class="graph-link graph-link-${esc(link.kind)}" data-kind="${esc(link.kind)}" x1="${a.x.toFixed(1)}" y1="${a.y.toFixed(1)}" x2="${b.x.toFixed(1)}" y2="${b.y.toFixed(1)}" stroke="${color}" stroke-width="1" vector-effect="non-scaling-stroke"><title>${esc(link.kind === "investor" ? "投资关系" : "背景关系")}</title></line>`;
+    const dx = b.x - a.x, dy = b.y - a.y;
+    const length = Math.max(1, Math.sqrt(dx * dx + dy * dy));
+    const bend = ((index % 7) - 3) * 5;
+    const mx = (a.x + b.x) / 2 - dy / length * bend;
+    const my = (a.y + b.y) / 2 + dx / length * bend;
+    const focused = link.source === initialFocus.id || link.target === initialFocus.id;
+    return `<path class="graph-link graph-link-${esc(link.kind)}${focused ? " is-focus-link" : ""}" data-kind="${esc(link.kind)}" data-source="${esc(link.source)}" data-target="${esc(link.target)}" d="M ${a.x.toFixed(1)} ${a.y.toFixed(1)} Q ${mx.toFixed(1)} ${my.toFixed(1)}, ${b.x.toFixed(1)} ${b.y.toFixed(1)}" stroke="${color}" stroke-width="1" vector-effect="non-scaling-stroke"><title>${esc(link.kind === "investor" ? "投资关系" : "背景关系")}</title></path>`;
   }).join("");
 
   const profileByLabel = new Map<string, CompanyProfile>();
@@ -1058,50 +1342,72 @@ function renderKnowledgeGraph(network: ReportNetwork | undefined, profiles: Comp
     for (const alias of profile.aliases || []) profileByLabel.set(alias, profile);
   }
 
-  const nodeSvg = [...companyPos, ...hubPos].map(({ node, x, y }) => {
+  const keyNeighborIds = new Set(initialNeighbors.slice(0, 10).map(node => node.id));
+  const nodeSvg = allNodes.map((node) => {
+    const point = pos.get(node.id) || { x: 500, y: 330 };
     const deg = degree.get(node.id) || 0;
     const isHub = node.type !== "company";
-    const radius = isHub ? 3.5 + Math.min(11, deg * 0.9) : 3.5 + Math.min(12, deg * 1.1);
-    const label = deg >= (isHub ? 3 : 4) ? node.label : "";
+    const radius = isHub ? 4.5 + Math.min(10, deg * 0.72) : 4.5 + Math.min(9, deg * 1.05);
     const jumpProfile = isHub ? undefined : profileByLabel.get(node.label);
-    const jumpAttr = jumpProfile ? ` data-jump-card="${esc(jumpProfile.id)}"` : "";
+    const cardAttr = jumpProfile ? ` data-card-id="${esc(jumpProfile.id)}"` : "";
     const kindLabel = node.type === "company" ? "公司" : node.type === "investor" ? "投资方" : "背景标签";
-    return `<g class="graph-node type-${esc(node.type)}" data-id="${esc(node.id)}"${jumpAttr} transform="translate(${x.toFixed(1)},${y.toFixed(1)})">
-<circle r="${radius.toFixed(1)}" fill="${colorOf(node, isHub)}" fill-opacity="${isHub ? ".9" : ".82"}" stroke="rgba(255,255,255,.28)" stroke-width="1"><title>${esc(node.label)} · ${esc(kindLabel)} · ${deg} 条关系${node.sector ? ` · ${esc(node.sector)}` : ""}${node.city ? ` · ${esc(node.city)}` : ""}</title></circle>
-${label ? `<text y="${(radius + 10).toFixed(1)}" text-anchor="middle" class="gn">${esc(label.length > 14 ? label.slice(0, 13) + "…" : label)}</text>` : ""}
+    const nodeClass = node.id === initialFocus.id ? " is-focus" : neighborIds.has(node.id) ? ` is-neighbor${keyNeighborIds.has(node.id) ? " is-key" : ""}` : " is-dim";
+    const shortLabel = node.label.length > 17 ? node.label.slice(0, 16) + "…" : node.label;
+    const aria = `${node.label}，${kindLabel}，${deg} 条关系`;
+    return `<g class="graph-node type-${esc(node.type)}${nodeClass}" data-id="${esc(node.id)}" data-label="${esc(node.label)}" data-type="${esc(node.type)}" data-degree="${deg}" data-sector="${esc(node.sector || "")}" data-city="${esc(node.city || "")}"${cardAttr} role="button" tabindex="0" aria-label="${esc(aria)}" aria-pressed="${node.id === initialFocus.id ? "true" : "false"}" style="transform:translate(${point.x.toFixed(1)}px,${point.y.toFixed(1)}px)">
+<circle class="gn-hit" r="${Math.max(15, radius + 6).toFixed(1)}"></circle>
+<circle class="gn-dot" r="${radius.toFixed(1)}" fill="${colorOf(node, isHub)}" fill-opacity="${isHub ? ".92" : ".86"}"><title>${esc(node.label)} · ${esc(kindLabel)} · ${deg} 条关系${node.sector ? ` · ${esc(node.sector)}` : ""}${node.city ? ` · ${esc(node.city)}` : ""}</title></circle>
+<text y="${(radius + 13).toFixed(1)}" text-anchor="middle" class="gn">${esc(shortLabel)}</text>
 </g>`;
   }).join("");
 
-  const topHubs = hubs.slice(0, 5).map(node => ({ node, deg: degree.get(node.id) || 0 }));
-  const topCompanies = companies.slice().sort((a, b) => (degree.get(b.id) || 0) - (degree.get(a.id) || 0)).slice(0, 5)
-    .map(node => ({ node, deg: degree.get(node.id) || 0 }));
-  const avgCompanyDeg = companies.length ? (companies.reduce((sum, node) => sum + (degree.get(node.id) || 0), 0) / companies.length).toFixed(1) : "0";
+  const initialConnections = initialLinks.map(link => {
+    const otherId = link.source === initialFocus.id ? link.target : link.source;
+    return { node: nodeById.get(otherId), kind: link.kind };
+  }).filter((item): item is { node: ReportNetworkNode; kind: string } => Boolean(item.node)).sort((a, b) =>
+    (degree.get(b.node.id) || 0) - (degree.get(a.node.id) || 0) || a.node.label.localeCompare(b.node.label, "zh"));
+  const focusProfile = initialFocus.type === "company" ? profileByLabel.get(initialFocus.label) : undefined;
+  const focusMeta = [initialFocus.type === "company" ? "公司" : initialFocus.type === "investor" ? "投资方" : "背景标签", initialFocus.sector, initialFocus.city].filter(Boolean);
   const readout = `
-<aside class="graph-readout">
-<h3>图里一眼能看到的</h3>
-<div class="gr-stat"><b>${avgCompanyDeg}</b><span>平均每家公司连接数</span></div>
-<h4>连接最多的背景</h4>
-<ol>${topHubs.map(item => `<li><b>${esc(item.node.label)}</b><span>${item.deg}</span></li>`).join("")}</ol>
-<h4>连接最多的公司</h4>
-<ol>${topCompanies.map(item => `<li><b>${esc(item.node.label)}</b><span>${item.deg}</span></li>`).join("")}</ol>
+<aside class="graph-readout" aria-live="polite">
+<div class="gr-kicker">RELATION FOCUS</div>
+<h3 id="graphFocusName">${esc(initialFocus.label)}</h3>
+<p class="gr-meta" id="graphFocusMeta">${focusMeta.map(item => `<span>${esc(String(item))}</span>`).join("")}</p>
+<div class="gr-stat"><b id="graphFocusDegree">${initialConnections.length}</b><span>条直接关系<br>当前筛选口径</span></div>
+<h4>直接关系</h4>
+<ol id="graphFocusConnections">${initialConnections.slice(0, 8).map(item => `<li class="${esc(item.kind)}"><i></i><b>${esc(item.node.label)}</b><span>${item.kind === "investor" ? "投资" : "背景"}</span></li>`).join("")}</ol>
+<p class="gr-more" id="graphFocusMore">${initialConnections.length > 8 ? `另有 ${initialConnections.length - 8} 条直接关系。搜索或点选节点可继续展开。` : initialConnections.length ? "点选任意相邻节点，继续沿关系阅读。" : "当前筛选下没有直接关系，可切换关系类型。"}</p>
+<button class="rt-link gr-jump" id="graphJump" type="button"${focusProfile ? ` data-jump-card="${esc(focusProfile.id)}"` : " hidden"}>打开公司证据卡 →</button>
+<div class="gr-network" aria-label="网络规模"><span><b>${companies.length}</b>公司</span><span><b>${hubs.length}</b>关系对象</span><span><b>${links.length}</b>关系</span></div>
 </aside>`;
 
+  const nodeOptions = allNodes.map(node => `<option value="${esc(node.label)}">${esc(node.type === "company" ? "公司" : node.type === "investor" ? "投资方" : "背景标签")}</option>`).join("");
+
   return `<section id="graph"><h2>知识图谱<span class="n">${companies.length} 家公司 · ${hubs.length} 个投资方/背景 · ${links.length} 条关系</span></h2>
-<p class="lede">外环是公司，按行业聚在一起；内环是投资方与背景标签。点越大，连接越多。
-这不是结论图，而是「谁和谁通过什么被连在一起」的索引用图——每一条边的原始依据仍在公司卡里。</p>
+<p class="lede">默认只展开一个节点的一跳关系，避免全量连线互相遮挡；点节点或搜索名称即可沿关系继续阅读。“全局概览”按公司与关系对象分栏，只看网络密度与分布。
+这仍是「谁和谁通过什么被连在一起」的索引用图，不是结论图——每一条边的原始依据仍在公司证据卡里。</p>
 <div class="graph-controls" role="group" aria-label="关系类型筛选">
-<button class="rt-link active" data-graph-filter="all" type="button">显示全部</button>
-<button class="rt-link" data-graph-filter="investor" type="button">只看投资关系</button>
-<button class="rt-link" data-graph-filter="background" type="button">只看背景关系</button>
+<div class="graph-mode-controls" role="group" aria-label="图谱阅读方式">
+<button class="rt-link active" data-graph-mode="focus" type="button">关系焦点</button>
+<button class="rt-link" data-graph-mode="overview" type="button">全局概览</button>
+</div>
+<label class="graph-search" for="graphSearch"><span aria-hidden="true">⌕</span><input id="graphSearch" list="graphNodeOptions" autocomplete="off" placeholder="搜索公司、投资方或背景"><datalist id="graphNodeOptions">${nodeOptions}</datalist></label>
+<div class="graph-filter-controls" role="group" aria-label="关系类型">
+<button class="rt-link active" data-graph-filter="all" type="button">全部关系</button>
+<button class="rt-link" data-graph-filter="investor" type="button">投资</button>
+<button class="rt-link" data-graph-filter="background" type="button">背景</button>
+</div>
 </div>
 <div class="graph-legend">
 <span><i style="background:#4fc3f7"></i>公司（按行业着色）</span>
 <span><i style="background:#ffad21"></i>投资方</span>
 <span><i style="background:#56c8d8"></i>背景标签</span>
-<span><i style="background:rgba(255,173,33,.45)"></i>投资关系</span>
-<span><i style="background:rgba(86,200,216,.45)"></i>背景关系</span>
+<span>节点越大，直接关系越多</span>
 </div>
-<div class="graph-layout">${readout}<div class="kgraph"><svg viewBox="0 0 1000 700" role="img" aria-label="FDE 公司知识图谱">${linkSvg}${nodeSvg}</svg></div></div>
+<div class="graph-layout">${readout}<div class="kgraph is-focus-mode" data-initial-focus="${esc(initialFocus.id)}"><svg viewBox="0 0 1000 660" role="img" aria-label="FDE 公司关系焦点图">
+<text class="graph-lane-label" x="68" y="42">COMPANIES · ${companies.length}</text><text class="graph-lane-label" x="932" y="42" text-anchor="end">INVESTORS / BACKGROUNDS · ${hubs.length}</text>
+<g class="graph-focus-halo" id="graphFocusHalo" aria-hidden="true" style="transform:translate(500px,330px)"><circle r="27"></circle><circle r="39"></circle></g>
+<g aria-hidden="true">${linkSvg}</g>${nodeSvg}</svg></div></div>
 </section>`;
 }
 
