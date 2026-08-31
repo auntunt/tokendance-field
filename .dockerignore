@@ -10,7 +10,9 @@ data
 npm-debug.log*
 .DS_Store
 .git
-tests
+tests/*
+!tests/fixtures/
+!tests/fixtures/**
 .test-build
 examples
 tsconfig.tsbuildinfo

@@ -27,3 +27,12 @@ test("旧按公司调度器默认关闭，保留的手动模块仍有容量限�
   assert.match(env, /FDE_SCHEDULER_MAX_ADDED_EDGES=6/);
   assert.match(env, /FDE_SCHEDULER_MAX_GRAPH_EDGES=48/);
 });
+
+test("Docker 生产环境只由 GitHub Actions 每周触发一次行业周报", async () => {
+  const workflow = await source("../.github/workflows/industry-weekly.yml");
+  assert.match(workflow, /cron: ["']0 1 \* \* 1["']/);
+  assert.match(workflow, /workflow_dispatch:/);
+  assert.match(workflow, /\/api\/cron\/industry-weekly/);
+  assert.match(workflow, /Authorization: Bearer \$\{FIELD_CRON_SECRET\}/);
+  assert.doesNotMatch(workflow, /scheduler\/run|FDE_SCHEDULER/);
+});

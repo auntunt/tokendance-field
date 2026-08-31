@@ -1,8 +1,0 @@
-{
-  "crons": [
-    {
-      "path": "/api/cron/industry-weekly",
-      "schedule": "0 1 * * 1"
-    }
-  ]
-}

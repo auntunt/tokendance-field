@@ -45,11 +45,17 @@ docker compose -f docker-compose.prod.yml up -d field
 curl -fsS http://127.0.0.1:8021/api/health
 ```
 
+镜像在构建时会用真实公开来源样本生成广联达验收档案。首次启动、且 `/data/fde-dossier.sqlite` 不存在时才复制到 volume；后续启动和升级不会覆盖已经产生的档案、周报选择或 `DossierRun`。本机也可用 `npm run dossier:bootstrap -- /tmp/fde-dossier.sqlite` 单独生成并检查种子库，已有目标默认拒绝覆盖。
+
 正式域名 `www.field.tokendance.cool` 由 Nginx 反代至 `http://127.0.0.1:8021`。不要把 8021 直接暴露到公网。
+
+完整上线与首周验收步骤见 [`docs/production-rollout.md`](docs/production-rollout.md)。
 
 ## 行业周报
 
-生产服务不启动旧的按公司调度器。M6 仅通过 `vercel.json` 每周一北京时间 09:00 调用 `/api/cron/industry-weekly`，按行业列表页增量生成一页周报。周报会记录 FDE 的真实选择时间，并显示连续四周、每周至少 3 条的运行验收进度；无目标客户的条目可在页面选择客户后写入档案。详细配置见 [`docs/industry-weekly.md`](docs/industry-weekly.md)。
+生产服务不启动旧的按公司调度器。M6 由 GitHub Actions 每周一北京时间 09:00 调用 Docker 服务的 `/api/cron/industry-weekly`，按行业列表页增量生成一页周报；也可在 Actions 页面手动立即运行。这样 SQLite 始终写入服务器上的持久化 volume，不依赖 Vercel 临时文件系统。
+
+部署后需要在 GitHub 仓库 Actions secrets 中配置 `FIELD_BASE_URL`（例如 `https://www.field.tokendance.cool`）和 `FIELD_CRON_SECRET`；后者必须与服务器 `.env` 的 `CRON_SECRET` 完全一致。周报会记录 FDE 的真实选择时间，并显示连续四周、每周至少 3 条的运行验收进度；无目标客户的条目可在页面选择客户后写入档案。详细配置见 [`docs/industry-weekly.md`](docs/industry-weekly.md)。
 
 以下是冻结保留的旧调度器规则，仅在显式调用旧手动接口时适用：
 

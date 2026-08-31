@@ -24,8 +24,8 @@ export async function GET(request: Request): Promise<Response> {
   if (!industryId || feedUrls.length === 0) {
     return Response.json({ error: "缺少行业周报配置" }, { status: 503 });
   }
-  const databasePath = resolve(process.env.DOSSIER_DB_PATH ?? "data/dossier.db");
-  if (!existsSync(databasePath)) {
+  const databasePath = resolve(/* turbopackIgnore: true */ process.env.DOSSIER_DB_PATH ?? "data/dossier.db");
+  if (!existsSync(/* turbopackIgnore: true */ databasePath)) {
     return Response.json({ error: "档案数据库尚未生成", databasePath }, { status: 503 });
   }
   const db = new Database(databasePath);

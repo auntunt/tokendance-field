@@ -23,8 +23,8 @@ export async function GET(
   const url = new URL(request.url);
   const from = validDate(url.searchParams.get("from"), now.toISOString().slice(0, 10));
   const to = validDate(url.searchParams.get("to"), defaultTo);
-  const databasePath = resolve(process.env.DOSSIER_DB_PATH ?? "data/dossier.db");
-  if (!existsSync(databasePath)) return Response.json({ error: "档案数据库尚未生成" }, { status: 503 });
+  const databasePath = resolve(/* turbopackIgnore: true */ process.env.DOSSIER_DB_PATH ?? "data/dossier.db");
+  if (!existsSync(/* turbopackIgnore: true */ databasePath)) return Response.json({ error: "档案数据库尚未生成" }, { status: 503 });
   const db = new Database(databasePath, { fileMustExist: true });
   try {
     ensureIndustryWeeklySchema(db);
