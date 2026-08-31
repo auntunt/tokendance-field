@@ -26,6 +26,12 @@ export interface CompanyRecord {
   name: string;
 }
 
+export interface CompanyProfileRecord extends CompanyRecord {
+  industryId: string;
+  controller: string;
+  listing: string;
+}
+
 export interface IndustryRecord {
   id: string;
   name: string;
@@ -76,6 +82,14 @@ export interface PositionRecord {
   owns: string;
   start: string;
   end: string;
+}
+
+export interface EventRecord {
+  id: string;
+  companyId: string;
+  occurredAt: string;
+  kind: "hire" | "leave" | "procurement" | "pilot" | "statement" | "strategy" | "lawsuit";
+  summary: string;
 }
 
 export interface OrgUnitRecord {
@@ -129,4 +143,12 @@ export interface AnnualReportCollection {
   financialSnapshots: Array<SourcedRecord<FinancialSnapshotRecord>>;
   people: Array<SourcedRecord<PersonRecord>>;
   positions: Array<SourcedRecord<PositionRecord>>;
+}
+
+export interface CompanyPeopleEventsCollection {
+  sources: SourceInput[];
+  company: SourcedRecord<CompanyProfileRecord>;
+  people: Array<SourcedRecord<PersonRecord>>;
+  positions: Array<SourcedRecord<PositionRecord>>;
+  events: Array<SourcedRecord<EventRecord>>;
 }
