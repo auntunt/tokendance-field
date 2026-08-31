@@ -301,6 +301,27 @@ function validateAnnualReportCollection(collection: AnnualReportCollection): voi
       revenue_share: row.revenueShare,
     }, item.evidence);
   }
+  for (const item of collection.processSteps) {
+    const row = item.record;
+    validate("process_step", row.id, {
+      business_line_id: row.businessLineId,
+      seq: row.seq,
+      name: row.name,
+      owner_org_unit: row.ownerOrgUnit,
+      pain_point: row.painPoint,
+    }, item.evidence);
+  }
+  for (const item of collection.systems) {
+    const row = item.record;
+    validate("system_in_use", row.id, {
+      company_id: row.companyId,
+      category: row.category,
+      product: row.product,
+      vendor: row.vendor,
+      covers_process_step: row.coversProcessStep,
+      since: row.since,
+    }, item.evidence);
+  }
   for (const item of collection.financialSnapshots) {
     const row = item.record;
     validate("financial_snapshot", row.id, {
@@ -377,6 +398,32 @@ export function ingestAnnualReportCollection(db: DossierDatabase, collection: An
         company_id: row.companyId, name: row.name, revenue_share: row.revenueShare,
       }, item.evidence);
     }
+    for (const item of collection.processSteps) {
+      const row = item.record;
+      db.prepare(`
+        INSERT INTO process_step (id, business_line_id, seq, name, owner_org_unit, pain_point)
+        VALUES (?, ?, ?, ?, ?, ?)
+        ON CONFLICT(business_line_id, seq) DO UPDATE SET name=excluded.name,
+          owner_org_unit=excluded.owner_org_unit, pain_point=excluded.pain_point
+      `).run(row.id, row.businessLineId, Number(row.seq), row.name, row.ownerOrgUnit, row.painPoint);
+      facts += insertFacts(db, fallbackSourceId, "process_step", row.id, {
+        business_line_id: row.businessLineId, seq: row.seq, name: row.name,
+        owner_org_unit: row.ownerOrgUnit, pain_point: row.painPoint,
+      }, item.evidence);
+    }
+    for (const item of collection.systems) {
+      const row = item.record;
+      db.prepare(`
+        INSERT INTO system_in_use (id, company_id, category, product, vendor, covers_process_step, since)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(company_id, category, product) DO UPDATE SET vendor=excluded.vendor,
+          covers_process_step=excluded.covers_process_step, since=excluded.since
+      `).run(row.id, row.companyId, row.category, row.product, row.vendor, row.coversProcessStep, row.since || null);
+      facts += insertFacts(db, fallbackSourceId, "system_in_use", row.id, {
+        company_id: row.companyId, category: row.category, product: row.product,
+        vendor: row.vendor, covers_process_step: row.coversProcessStep, since: row.since,
+      }, item.evidence);
+    }
     for (const item of collection.financialSnapshots) {
       const row = item.record;
       db.prepare(`
@@ -418,7 +465,7 @@ export function ingestAnnualReportCollection(db: DossierDatabase, collection: An
       companyId: company.id,
       jobPostings: 0,
       orgUnits: 0,
-      systems: 0,
+      systems: collection.systems.length,
       facts,
     };
   })();

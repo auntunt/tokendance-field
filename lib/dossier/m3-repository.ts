@@ -88,7 +88,9 @@ export function ingestCompanyPeopleEvents(
 
   return db.transaction(() => {
     for (const source of collection.sources) insertSource(db, source);
+    let createdPlaceholderIndustry = false;
     if (company.industryId) {
+      createdPlaceholderIndustry = !db.prepare("SELECT 1 FROM industry WHERE id=?").get(company.industryId);
       db.prepare("INSERT INTO industry (id, name) VALUES (?, ?) ON CONFLICT(id) DO NOTHING")
         .run(company.industryId, company.industryId);
     }
@@ -102,6 +104,11 @@ export function ingestCompanyPeopleEvents(
     let facts = insertFacts(db, "company", company.id, {
       name: company.name, industry_id: company.industryId, controller: company.controller, listing: company.listing,
     }, collection.company.evidence);
+    if (company.industryId && createdPlaceholderIndustry) {
+      facts += insertFacts(db, "industry", company.industryId, { name: company.industryId }, {
+        name: collection.company.evidence.industry_id,
+      });
+    }
     for (const item of collection.people) {
       const row = item.record;
       db.prepare(`

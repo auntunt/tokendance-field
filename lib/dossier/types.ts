@@ -56,6 +56,15 @@ export interface BusinessLineRecord {
   revenueShare: string;
 }
 
+export interface ProcessStepRecord {
+  id: string;
+  businessLineId: string;
+  seq: string;
+  name: string;
+  ownerOrgUnit: string;
+  painPoint: string;
+}
+
 export interface FinancialSnapshotRecord {
   id: string;
   companyId: string;
@@ -186,6 +195,8 @@ export interface AnnualReportCollection {
   industry: SourcedRecord<IndustryRecord>;
   industryTerms: Array<SourcedRecord<IndustryTermRecord>>;
   businessLines: Array<SourcedRecord<BusinessLineRecord>>;
+  processSteps: Array<SourcedRecord<ProcessStepRecord>>;
+  systems: Array<SourcedRecord<SystemInUseRecord>>;
   financialSnapshots: Array<SourcedRecord<FinancialSnapshotRecord>>;
   people: Array<SourcedRecord<PersonRecord>>;
   positions: Array<SourcedRecord<PositionRecord>>;

@@ -126,8 +126,18 @@ export function generateOpportunities(db: DossierDatabase, companyId: string): G
   return output;
 }
 
-export function persistOpportunities(db: DossierDatabase, opportunities: GeneratedOpportunity[]): void {
+export function persistOpportunities(
+  db: DossierDatabase,
+  opportunities: GeneratedOpportunity[],
+  companyId = opportunities[0]?.companyId,
+): void {
   db.transaction(() => {
+    if (companyId) {
+      db.prepare(`DELETE FROM fact WHERE "table"='opportunity' AND row_id IN (
+        SELECT id FROM opportunity WHERE company_id=?
+      )`).run(companyId);
+      db.prepare("DELETE FROM opportunity WHERE company_id=?").run(companyId);
+    }
     for (const row of opportunities) {
       db.prepare(`
         INSERT INTO opportunity (id, company_id, process_step_id, pain_point, ai_scenario, data_prerequisite, owner_org_unit, confidence)

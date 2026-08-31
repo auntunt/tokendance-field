@@ -27,6 +27,11 @@ export function collectOfficialWebsite(input: CollectOfficialWebsiteInput): Comp
   const sourceId = stableId("src", input.url, contentFingerprint(text));
   const title = lines.find(line => line.length >= 8 && !/^(?:\d{2}\/\d{2}|20\d{2}|发布时间)/.test(line)) ?? "官网动态";
   const eventExcerpt = lines.filter(line => /(?:发布|亮相|AI|数字化|战略)/i.test(line)).slice(0, 4).join("；");
+  const eventSummary = `${title}：${eventExcerpt}`
+    .replace(/[。！？!?]+/g, "；")
+    .replace(/；+/g, "；")
+    .replace(/；$/, "")
+    .slice(0, 500);
   const eventPointer: EvidencePointer = { sourceId, excerpt: eventExcerpt || title };
   const people = new Map<string, { name: string; title: string; excerpt: string }>();
   for (const line of lines) {
@@ -80,7 +85,7 @@ export function collectOfficialWebsite(input: CollectOfficialWebsiteInput): Comp
         companyId: input.companyId,
         occurredAt: publishedAt,
         kind: /战略/.test(text) ? "strategy" : "statement",
-        summary: `${title}：${eventExcerpt}`.slice(0, 500),
+        summary: eventSummary,
       },
       evidence: {
         company_id: eventPointer,

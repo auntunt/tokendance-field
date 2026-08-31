@@ -12,6 +12,10 @@ const require = createRequire(import.meta.url);
 const Database = require("better-sqlite3");
 const { collectAnnualReport } = require(`${outDir}/collectors/annual-report.js`);
 const { ingestAnnualReportCollection, initializeDossierSchema } = require(`${outDir}/dossier/repository.js`);
+const { generateOpportunities } = require(`${outDir}/generate/opportunities.js`);
+const { generateEntryPrep } = require(`${outDir}/generate/entry-prep.js`);
+const { generateDossier } = require(`${outDir}/dossier/generate.js`);
+const { findMissingSourceFields } = require(`${outDir}/dossier/source-coverage.js`);
 
 const fixture = readFileSync(resolve(root, "tests/fixtures/annual-report/glodon-2025-pages.txt"), "utf8");
 
@@ -33,8 +37,19 @@ test("真实年报摘录按 PDF 页码抽取行业术语、业务线、财务和
   assert.ok(result.sources.every(source => /#page=\d+$/.test(source.url)));
   assert.deepEqual(
     result.businessLines.map(item => item.record.name),
-    ["数字成本", "数字施工", "数字设计", "海外"],
+    ["数字成本", "数字施工", "数字设计", "海外", "平台与生态"],
   );
+  assert.deepEqual(result.processSteps.map(item => item.record.name), [
+    "图纸/模型 → 算量 → 组价 → 投标/清标/评标",
+    "数据接入/转换 → 统一标准 → 组件复用 → 产品/伙伴应用",
+    "项目立项 → 人机料采集 → 进度/安全/成本分析 → 项目决策",
+    "多专业设计 → 构件协同 → 算量/成本校核 → BIM 交付",
+  ]);
+  assert.deepEqual(result.systems.map(item => item.record.product), [
+    "AECOS",
+    "AecGPT",
+    "项目综合决策 / 物料管理 / 劳务管理 / 安全管理 / 智能塔机",
+  ]);
   const terms = new Set(result.industryTerms.map(item => item.record.term));
   for (const term of ["BIM", "工程算量", "清标 / 评标", "CDE / GDE / ECS", "AecGPT", "STL 组织"]) {
     assert.ok(terms.has(term), `缺少术语 ${term}`);
@@ -60,11 +75,13 @@ test("年报每个写入字段通过 Fact 指向具体 PDF 页", () => {
   const orphan = db.prepare(`
     SELECT f."table", f.row_id, f.field
     FROM fact f LEFT JOIN source s ON s.id = f.source_id
-    WHERE f."table" IN ('industry', 'industry_term', 'business_line', 'financial_snapshot', 'person', 'position')
+    WHERE f."table" IN ('industry', 'industry_term', 'business_line', 'process_step', 'system_in_use', 'financial_snapshot', 'person', 'position')
       AND (s.id IS NULL OR s.url NOT LIKE '%#page=%' OR length(s.page_or_excerpt) = 0)
   `).all();
   assert.deepEqual(orphan, []);
   assert.equal(db.prepare("SELECT count(*) AS count FROM financial_snapshot").get().count, 3);
+  assert.equal(db.prepare("SELECT count(*) AS count FROM process_step").get().count, 4);
+  assert.equal(db.prepare("SELECT count(*) AS count FROM system_in_use").get().count, 3);
   db.close();
 });
 
@@ -100,4 +117,49 @@ test("M2 对照冻结 M0 第 2/3/7 章字段命中率不低于 80%", () => {
   assert.equal(checks.length, 19);
   assert.equal(hits, 18, "唯一允许的缺口应是 2023 研发投入，需上一期年报补齐");
   assert.ok(rate >= 0.8, `字段命中率 ${(rate * 100).toFixed(1)}%`);
+});
+
+test("同一客户重跑年报后数值字段逐项一致", () => {
+  const db = new Database(":memory:");
+  initializeDossierSchema(db);
+  ingestAnnualReportCollection(db, collection());
+  const first = db.prepare("SELECT year, revenue, net_profit, rnd_expense, it_capex FROM financial_snapshot ORDER BY year").all();
+  ingestAnnualReportCollection(db, collection());
+  const second = db.prepare("SELECT year, revenue, net_profit, rnd_expense, it_capex FROM financial_snapshot ORDER BY year").all();
+  assert.deepEqual(second, first);
+  db.close();
+});
+
+test("真实年报入库后可直接生成至少四个有流程与系统来源的机会", () => {
+  const db = new Database(":memory:");
+  initializeDossierSchema(db);
+  ingestAnnualReportCollection(db, collection());
+  const opportunities = generateOpportunities(db, "002410.SZ");
+  const scenarios = new Set(opportunities.map(item => item.aiScenario));
+  assert.ok(opportunities.length >= 4);
+  assert.ok(opportunities.every(item => item.processSourceIds.length > 0 && item.systemSourceIds.length > 0));
+  for (const expected of [
+    "有引用定位的算量/组价/清标助手",
+    "AecGPT 评测与发布管理，按场景跟踪准确率/成本",
+    "项目风险解释、原因定位与行动建议",
+    "隐患识别后的规则校验、解释与闭环助手",
+  ]) assert.ok(scenarios.has(expected), `缺少真实链路机会：${expected}`);
+  assert.ok(opportunities.length / 6 >= 0.6, `真实链路机会重合率 ${(opportunities.length / 6 * 100).toFixed(1)}%`);
+  const prep = generateEntryPrep(db, "002410.SZ", opportunities);
+  assert.ok(prep.questions.length >= 5);
+  assert.ok(prep.questions.every(item => item.basisIds.length > 0));
+  db.close();
+});
+
+test("真实年报从入库到可打开档案的每个非空字段都有精确来源", () => {
+  const db = new Database(":memory:");
+  initializeDossierSchema(db);
+  ingestAnnualReportCollection(db, collection());
+  const dossier = generateDossier(db, "002410.SZ", "2026-09-01T00:00:00Z");
+  assert.deepEqual(findMissingSourceFields(db, "002410.SZ"), []);
+  assert.match(dossier.html, /^<!doctype html>/);
+  assert.match(dossier.html, /class="sourced"/);
+  assert.match(dossier.html, /#page=13/);
+  assert.equal(db.prepare("SELECT count(*) AS count FROM dossier_run").get().count, 1);
+  db.close();
 });

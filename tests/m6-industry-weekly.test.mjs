@@ -82,6 +82,7 @@ test("一页行业周报展示日期、类型、状态和可点击来源", () =>
   assert.match(html, /target_action/);
   assert.match(html, /已写入/);
   assert.match(html, /写入 Event/);
+  assert.match(html, /已选择 1 \/ 至少 3 条/);
   assert.match(html, /href="https:\/\/www\.glodon\.com/);
   db.close();
 });

@@ -22,6 +22,25 @@ export interface ExtractedBusinessLine {
   excerpt: string;
 }
 
+export interface ExtractedProcessStep {
+  businessLineName: string;
+  seq: number;
+  name: string;
+  ownerOrgUnit: string;
+  painPoint: string;
+  pageNumber: number;
+  excerpt: string;
+}
+
+export interface ExtractedSystem {
+  category: string;
+  product: string;
+  vendor: string;
+  coversProcessStep: string;
+  pageNumber: number;
+  excerpt: string;
+}
+
 export interface ExtractedFinancialYear {
   year: number;
   revenue: LocatedValue<string> | null;
@@ -40,6 +59,8 @@ export interface ExtractedPosition {
 export interface AnnualReportExtraction {
   terms: ExtractedTerm[];
   businessLines: ExtractedBusinessLine[];
+  processSteps: ExtractedProcessStep[];
+  systems: ExtractedSystem[];
   financialYears: ExtractedFinancialYear[];
   positions: ExtractedPosition[];
   industryPage: LocatedValue<string> | null;
@@ -164,7 +185,115 @@ function extractBusinessLines(pages: PagedTextPage[]): ExtractedBusinessLine[] {
       break;
     }
   }
+  const platform = pageContaining(pages, /AECOS 产业业务平台/);
+  if (platform) {
+    output.push({
+      name: "平台与生态",
+      revenue: "",
+      yearOnYear: "",
+      pageNumber: platform.pageNumber,
+      excerpt: excerptAround(platform.text, /AECOS 产业业务平台[\s\S]{0,260}?柔性数据标准体系/, 80),
+    });
+  }
   return output;
+}
+
+function extractProcessSteps(pages: PagedTextPage[]): ExtractedProcessStep[] {
+  const output: ExtractedProcessStep[] = [];
+  const ai = pageContaining(pages, /AI\s*算量[\s\S]{0,160}?AI\s*评标/);
+  if (ai) {
+    const excerpt = excerptAround(ai.text, /AI\s*算量[\s\S]{0,160}?AI\s*评标/, 100);
+    output.push({
+      businessLineName: "数字成本",
+      seq: 1,
+      name: "图纸/模型 → 算量 → 组价 → 投标/清标/评标",
+      ownerOrgUnit: "数字成本产品线",
+      painPoint: "图纸、清单、定额与材料价跨环节使用",
+      pageNumber: ai.pageNumber,
+      excerpt,
+    });
+  }
+  const platform = pageContaining(pages, /CDE\s*数据\s*集成环境[\s\S]{0,180}?柔性数据标准体系/);
+  if (platform) {
+    const excerpt = excerptAround(platform.text, /CDE\s*数据\s*集成环境[\s\S]{0,180}?柔性数据标准体系/, 100);
+    output.push({
+      businessLineName: "平台与生态",
+      seq: 1,
+      name: "数据接入/转换 → 统一标准 → 组件复用 → 产品/伙伴应用",
+      ownerOrgUnit: "技术平台",
+      painPoint: "多环境连接与标准转换需要统一管理",
+      pageNumber: platform.pageNumber,
+      excerpt,
+    });
+  }
+  const construction = pageContaining(pages, /数字施工业务包括企业级管理软件以及项目级管理软件/);
+  if (construction) {
+    const excerpt = excerptAround(construction.text, /数字施工业务包括[\s\S]{0,180}?智能塔机/, 100);
+    output.push({
+      businessLineName: "数字施工",
+      seq: 1,
+      name: "项目立项 → 人机料采集 → 进度/安全/成本分析 → 项目决策",
+      ownerOrgUnit: "数字施工产品线",
+      painPoint: "项目级数据覆盖物料、劳务、安全和综合决策",
+      pageNumber: construction.pageNumber,
+      excerpt,
+    });
+  }
+  const design = pageContaining(pages, /数维房建设计和数维基建设计/);
+  if (design) {
+    const excerpt = excerptAround(design.text, /数字设计业务[\s\S]{0,180}?数维基建设计/, 80);
+    output.push({
+      businessLineName: "数字设计",
+      seq: 1,
+      name: "多专业设计 → 构件协同 → 算量/成本校核 → BIM 交付",
+      ownerOrgUnit: "数字设计产品线",
+      painPoint: "房建与基建设计产品需要统一工程数据",
+      pageNumber: design.pageNumber,
+      excerpt,
+    });
+  }
+  return output.filter(item => item.excerpt);
+}
+
+function extractSystems(pages: PagedTextPage[]): ExtractedSystem[] {
+  const output: ExtractedSystem[] = [];
+  const platform = pageContaining(pages, /AECOS 产业业务平台/);
+  if (platform) {
+    const excerpt = excerptAround(platform.text, /AECOS 产业业务平台[\s\S]{0,300}?柔性数据标准体系/, 80);
+    output.push({
+      category: "产业平台",
+      product: "AECOS",
+      vendor: "自研",
+      coversProcessStep: "CDE 数据集成、GDE 数据连接、ECS 数据转换与柔性数据标准",
+      pageNumber: platform.pageNumber,
+      excerpt,
+    });
+  }
+  const model = pageContaining(pages, /AecGPT\s*建筑产业大模型/);
+  if (model) {
+    const excerpt = excerptAround(model.text, /AecGPT\s*建筑产业大模型[\s\S]{0,360}?AI\s*评标/, 100);
+    output.push({
+      category: "AI 平台",
+      product: "AecGPT",
+      vendor: "自研",
+      coversProcessStep: "设计、交易、成本等七大领域；AI 算量、组价、清标、编标、评标",
+      pageNumber: model.pageNumber,
+      excerpt,
+    });
+  }
+  const construction = pageContaining(pages, /项目综合决策、物料管理、劳务管理、安全管理、智能塔机/);
+  if (construction) {
+    const excerpt = excerptAround(construction.text, /企业级管理软件[\s\S]{0,180}?智能塔机/, 100);
+    output.push({
+      category: "项目管理与安全",
+      product: "项目综合决策 / 物料管理 / 劳务管理 / 安全管理 / 智能塔机",
+      vendor: "自研",
+      coversProcessStep: "物料、劳务、安全与项目综合决策",
+      pageNumber: construction.pageNumber,
+      excerpt,
+    });
+  }
+  return output.filter(item => item.excerpt);
 }
 
 function located(page: PagedTextPage, value: string, excerpt: string): LocatedValue<string> {
@@ -203,10 +332,11 @@ function extractPositions(pages: PagedTextPage[]): ExtractedPosition[] {
   const pattern = /([\u4e00-\u9fff]{2,4})先生：([\s\S]{0,500}?)现任本公司([^。]+)。/g;
   for (const page of pages) {
     for (const match of page.text.matchAll(pattern)) {
+      const biography = compactText(match[2]).split("。").map(part => part.trim()).filter(Boolean).at(-1) ?? "";
       output.push({
         name: match[1],
         title: compactText(match[3]),
-        bio: compactText(match[2]).slice(0, 180),
+        bio: biography.slice(0, 180),
         pageNumber: page.pageNumber,
         excerpt: compactText(match[0]),
       });
@@ -220,6 +350,8 @@ export function extractAnnualReport(pages: PagedTextPage[], reportYear: number):
   return {
     terms: extractTerms(pages),
     businessLines: extractBusinessLines(pages),
+    processSteps: extractProcessSteps(pages),
+    systems: extractSystems(pages),
     financialYears: extractFinancialYears(pages, reportYear),
     positions: extractPositions(pages),
     industryPage: industryPage ? {

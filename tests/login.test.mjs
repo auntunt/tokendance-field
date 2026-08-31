@@ -17,15 +17,19 @@ test("免鉴权的路径只有登录相关那几条", async () => {
   assert.deepEqual(paths, ["/api/health", "/api/login", "/login"]);
 });
 
-test("没票据也没 Basic 头，一律进不来", async () => {
+test("没票据、Basic 或限定路径的 Cron Bearer，一律进不来", async () => {
   const proxy = await source("../proxy.ts");
   // 两条进门路径都要在，且是「或」关系；缺了 Basic 会打断脚本和健康检查。
   assert.match(proxy, /readTicket\(/);
   assert.match(proxy, /Basic \$\{btoa/);
   assert.match(proxy, /ticketUser === username \|\| basicOk/);
-  // 凭据仍然只有这一套，没有新增账号来源。
+  // 人与普通脚本仍用原有凭据；计划任务只在一个精确路径接受独立密钥。
   assert.match(proxy, /FIELD_ACCESS_USER/);
   assert.match(proxy, /FIELD_ACCESS_PASSWORD/);
+  assert.match(proxy, /pathname === "\/api\/cron\/industry-weekly"/);
+  assert.match(proxy, /authorization === `Bearer \$\{cronSecret\}`/);
+  assert.match(proxy, /ticketUser === username \|\| basicOk \|\| cronOk/);
+  assert.doesNotMatch(proxy, /pathname\.startsWith\("\/api\/cron/);
   // 未配置凭据时必须是 503 拒绝，而不是默默放行。
   assert.match(proxy, /if \(!username \|\| !password\) return new NextResponse\([^)]*503/s);
 });

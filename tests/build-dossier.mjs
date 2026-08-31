@@ -17,6 +17,8 @@ const sourceFiles = [
   "lib/dossier/m3-repository.ts",
   "lib/dossier/snapshot.ts",
   "lib/dossier/html.ts",
+  "lib/dossier/generate.ts",
+  "lib/dossier/source-coverage.ts",
   "lib/dossier/m5-repository.ts",
   "lib/dossier/m6-repository.ts",
   "lib/dossier/industry-weekly-html.ts",

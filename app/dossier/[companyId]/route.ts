@@ -1,10 +1,7 @@
 import Database from "better-sqlite3";
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
-import { renderDossierHtml } from "@/lib/dossier/html";
-import { captureDossierSnapshot, diffDossierSnapshots, type DossierSnapshot } from "@/lib/dossier/snapshot";
-import { generateEntryPrep } from "@/lib/generate/entry-prep";
-import { generateOpportunities } from "@/lib/generate/opportunities";
+import { generateDossier } from "@/lib/dossier/generate";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -19,21 +16,12 @@ export async function GET(
   if (!existsSync(databasePath)) {
     return Response.json({ error: "档案数据库尚未生成", databasePath }, { status: 503 });
   }
-  const db = new Database(databasePath, { readonly: true, fileMustExist: true });
+  const db = new Database(databasePath, { fileMustExist: true });
   try {
     const exists = db.prepare("SELECT 1 FROM company WHERE id=?").get(companyId);
     if (!exists) return Response.json({ error: "找不到客户", companyId }, { status: 404 });
-    const opportunities = generateOpportunities(db, companyId);
-    const prep = generateEntryPrep(db, companyId, opportunities);
-    const previous = db.prepare(`
-      SELECT snapshot FROM dossier_run WHERE company_id=? ORDER BY ran_at DESC, id DESC LIMIT 1
-    `).get(companyId) as { snapshot: string } | undefined;
-    const current = captureDossierSnapshot(db, companyId);
-    const changes = diffDossierSnapshots(
-      previous ? JSON.parse(previous.snapshot) as DossierSnapshot : null,
-      current,
-    );
-    return new Response(renderDossierHtml(db, companyId, opportunities, prep, changes), {
+    const dossier = generateDossier(db, companyId);
+    return new Response(dossier.html, {
       headers: { "content-type": "text/html; charset=utf-8" },
     });
   } catch (error) {

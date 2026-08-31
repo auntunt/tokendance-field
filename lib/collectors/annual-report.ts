@@ -92,6 +92,49 @@ export function collectAnnualReport(input: CollectAnnualReportInput): AnnualRepo
       evidence: { company_id: evidence, name: evidence },
     };
   });
+  const processSteps = extracted.processSteps.map(step => {
+    const evidence = pointer(step.pageNumber, step.excerpt);
+    const businessLineId = stableId("business", input.companyId, step.businessLineName);
+    return {
+      record: {
+        id: stableId("process", input.companyId, step.businessLineName, String(step.seq)),
+        businessLineId,
+        seq: String(step.seq),
+        name: step.name,
+        ownerOrgUnit: step.ownerOrgUnit,
+        painPoint: step.painPoint,
+      },
+      evidence: {
+        business_line_id: evidence,
+        seq: evidence,
+        name: evidence,
+        owner_org_unit: evidence,
+        pain_point: evidence,
+      },
+    };
+  });
+  const systems = extracted.systems.map(system => {
+    const evidence = pointer(system.pageNumber, system.excerpt);
+    return {
+      record: {
+        id: stableId("system", input.companyId, system.category, system.product),
+        companyId: input.companyId,
+        category: system.category,
+        product: system.product,
+        vendor: system.vendor,
+        coversProcessStep: system.coversProcessStep,
+        since: String(input.reportYear),
+      },
+      evidence: {
+        company_id: evidence,
+        category: evidence,
+        product: evidence,
+        vendor: evidence,
+        covers_process_step: evidence,
+        since: evidence,
+      },
+    };
+  });
   const financialSnapshots = extracted.financialYears.map(financial => {
     const first = financial.revenue ?? financial.netProfit ?? financial.rndExpense;
     if (!first) throw new Error(`年报 ${financial.year} 年没有财务字段`);
@@ -151,6 +194,8 @@ export function collectAnnualReport(input: CollectAnnualReportInput): AnnualRepo
     industry,
     industryTerms,
     businessLines,
+    processSteps,
+    systems,
     financialSnapshots,
     people,
     positions,

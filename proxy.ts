@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { SESSION_COOKIE, readTicket } from "./lib/session";
 
 /**
- * 两种进门方式，凭据是同一套：
+ * 人和普通脚本有两种进门方式，凭据是同一套：
  *   1. 登录页输密码，拿一张签名票据（人用）
  *   2. Authorization: Basic（脚本、curl、健康检查用）
+ * 行业周报计划任务只在精确路径接受 Vercel 注入的 Cron Bearer。
  * 加登录页没有放宽任何东西——没票据也没 Basic 头，一律进不来。
  */
 
@@ -31,8 +32,13 @@ export async function proxy(request: NextRequest) {
   if (PUBLIC_PATHS.has(pathname)) return harden(NextResponse.next());
 
   const ticketUser = await readTicket(request.cookies.get(SESSION_COOKIE)?.value, password, Date.now());
-  const basicOk = request.headers.get("authorization") === `Basic ${btoa(`${username}:${password}`)}`;
-  if (ticketUser === username || basicOk) return harden(NextResponse.next());
+  const authorization = request.headers.get("authorization");
+  const basicOk = authorization === `Basic ${btoa(`${username}:${password}`)}`;
+  const cronSecret = process.env.CRON_SECRET;
+  const cronOk = pathname === "/api/cron/industry-weekly"
+    && Boolean(cronSecret)
+    && authorization === `Bearer ${cronSecret}`;
+  if (ticketUser === username || basicOk || cronOk) return harden(NextResponse.next());
 
   // 接口返 401 让前端能处理；页面跳登录页，人不该看见一行裸的报错。
   // next 参数带上原路径，登录完能回到他本来要去的地方。

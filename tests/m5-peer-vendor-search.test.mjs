@@ -58,6 +58,8 @@ test("厂商案例必须同时出现客户与厂商才形成 IT 厂商关系", (
 test("已打开的案例页写 Relationship/Fact，搜索摘要不参与写入", () => {
   const db = new Database(":memory:");
   initializeDossierSchema(db);
+  db.prepare("INSERT INTO company (id, name) VALUES (?, ?)").run("002410.SZ", "广联达科技股份有限公司");
+  db.prepare("INSERT INTO company (id, name) VALUES (?, ?)").run("600861.SH", "FESCO");
   for (const peer of peers()) ingestRelationshipCollection(db, peer.relationship);
   const vendor = collectVendorCase({
     companyId: "600861.SH", companyName: "FESCO", vendorName: "蓝凌", url: "https://landray.com.cn/activity/96114",
@@ -67,6 +69,16 @@ test("已打开的案例页写 Relationship/Fact，搜索摘要不参与写入",
   assert.equal(db.prepare("SELECT count(*) AS count FROM relationship").get().count, 3);
   assert.equal(db.prepare("SELECT count(*) AS count FROM fact WHERE \"table\"='relationship'").get().count, 9);
   assert.equal(db.prepare("SELECT count(*) AS count FROM source").get().count, 3);
+  db.close();
+});
+
+test("同行或厂商页面不能凭空创建尚未建档的客户", () => {
+  const db = new Database(":memory:");
+  initializeDossierSchema(db);
+  const peer = peers()[0];
+  assert.throws(() => ingestRelationshipCollection(db, peer.relationship), /必须先建档客户/);
+  assert.equal(db.prepare("SELECT count(*) AS count FROM company").get().count, 0);
+  assert.equal(db.prepare("SELECT count(*) AS count FROM source").get().count, 0);
   db.close();
 });
 

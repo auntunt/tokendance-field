@@ -12,7 +12,7 @@ function pointer(value: unknown): EvidencePointer {
 export function ingestIndustryWeekly(db: DossierDatabase, collection: IndustryWeeklyCollection): { inserted: number; existing: number } {
   const sourceIds = new Set(collection.sources.map(source => source.id));
   for (const item of collection.updates) {
-    for (const field of ["industry_id", "found_at", "kind", "summary"]) {
+    for (const field of ["industry_id", "found_at", "kind", ...(item.record.companyId ? ["company_id"] : []), "summary"]) {
       const evidence = pointer(item.evidence[field]);
       if (!sourceIds.has(evidence.sourceId) || !evidence.excerpt.trim()) throw new Error(`industry_update.${field} 来源无效`);
     }

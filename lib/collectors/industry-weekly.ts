@@ -14,6 +14,7 @@ interface FeedItem {
 const KINDS = new Set<IndustryUpdateRecord["kind"]>(["peer_case", "procurement", "policy", "vendor_move", "target_action"]);
 const SOURCE_TYPES = new Set<SourceType>(["filing", "official", "third_party"]);
 const MAX_FEED_BYTES = 2 * 1024 * 1024;
+const FEED_TIMEOUT_MS = 15_000;
 
 function validSourceUrl(value: unknown): value is string {
   if (typeof value !== "string") return false;
@@ -72,7 +73,12 @@ export function collectIndustryWeeklyFeed(industryId: string, content: string): 
 
 export async function fetchIndustryWeeklyFeed(industryId: string, url: string): Promise<IndustryWeeklyCollection> {
   if (!validSourceUrl(url)) throw new Error(`行业周报中转源必须使用 HTTPS：${url}`);
-  const response = await fetch(url, { headers: { accept: "application/json" }, cache: "no-store", redirect: "error" });
+  const response = await fetch(url, {
+    headers: { accept: "application/json" },
+    cache: "no-store",
+    redirect: "error",
+    signal: AbortSignal.timeout(FEED_TIMEOUT_MS),
+  });
   if (!response.ok) throw new Error(`行业周报中转源请求失败：${response.status} ${url}`);
   const contentLength = Number(response.headers.get("content-length") ?? 0);
   if (contentLength > MAX_FEED_BYTES) throw new Error(`行业周报中转源超过 2 MB：${url}`);
