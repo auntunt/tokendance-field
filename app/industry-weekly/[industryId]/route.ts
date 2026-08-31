@@ -2,6 +2,7 @@ import Database from "better-sqlite3";
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { renderIndustryWeeklyHtml } from "@/lib/dossier/industry-weekly-html";
+import { ensureIndustryWeeklySchema } from "@/lib/dossier/m6-repository";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -24,8 +25,9 @@ export async function GET(
   const to = validDate(url.searchParams.get("to"), defaultTo);
   const databasePath = resolve(process.env.DOSSIER_DB_PATH ?? "data/dossier.db");
   if (!existsSync(databasePath)) return Response.json({ error: "档案数据库尚未生成" }, { status: 503 });
-  const db = new Database(databasePath, { readonly: true, fileMustExist: true });
+  const db = new Database(databasePath, { fileMustExist: true });
   try {
+    ensureIndustryWeeklySchema(db);
     return new Response(renderIndustryWeeklyHtml(db, industryId, from, to), {
       headers: { "content-type": "text/html; charset=utf-8" },
     });

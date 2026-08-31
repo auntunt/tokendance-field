@@ -2,7 +2,7 @@ import Database from "better-sqlite3";
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { fetchIndustryWeeklyFeed } from "@/lib/collectors/industry-weekly";
-import { ingestIndustryWeekly } from "@/lib/dossier/m6-repository";
+import { ensureIndustryWeeklySchema, getIndustryWeeklyAcceptance, ingestIndustryWeekly } from "@/lib/dossier/m6-repository";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -30,6 +30,7 @@ export async function GET(request: Request): Promise<Response> {
   }
   const db = new Database(databasePath);
   try {
+    ensureIndustryWeeklySchema(db);
     const industry = db.prepare("SELECT 1 FROM industry WHERE id=?").get(industryId);
     if (!industry) return Response.json({ error: "找不到已建档行业", industryId }, { status: 409 });
     let inserted = 0;
@@ -40,12 +41,14 @@ export async function GET(request: Request): Promise<Response> {
       existing += result.existing;
     }
     const range = weekRange();
+    const acceptance = getIndustryWeeklyAcceptance(db, industryId);
     return Response.json({
       ok: true,
       industryId,
       sources: feedUrls.length,
       inserted,
       existing,
+      acceptance,
       reportUrl: `/industry-weekly/${encodeURIComponent(industryId)}?from=${range.from}&to=${range.to}`,
     });
   } catch (error) {

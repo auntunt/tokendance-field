@@ -151,7 +151,8 @@ CREATE TABLE IF NOT EXISTS industry_update (
     CHECK (kind IN ('peer_case', 'procurement', 'policy', 'vendor_move', 'target_action')),
   company_id TEXT REFERENCES company(id),
   summary TEXT NOT NULL,
-  promoted_to_event_id TEXT REFERENCES event(id)
+  promoted_to_event_id TEXT REFERENCES event(id),
+  promoted_at TEXT
 );
 
 CREATE TABLE IF NOT EXISTS source (

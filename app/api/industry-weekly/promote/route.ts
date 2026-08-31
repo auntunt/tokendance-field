@@ -9,13 +9,14 @@ export const dynamic = "force-dynamic";
 export async function POST(request: Request): Promise<Response> {
   const data = await request.formData();
   const updateId = String(data.get("updateId") ?? "").trim();
+  const companyId = String(data.get("companyId") ?? "").trim() || undefined;
   const returnTo = String(data.get("returnTo") ?? "/");
   if (!updateId) return Response.json({ error: "缺少周报条目" }, { status: 400 });
   const databasePath = resolve(process.env.DOSSIER_DB_PATH ?? "data/dossier.db");
   if (!existsSync(databasePath)) return Response.json({ error: "档案数据库尚未生成" }, { status: 503 });
   const db = new Database(databasePath);
   try {
-    promoteIndustryUpdateToEvent(db, updateId);
+    promoteIndustryUpdateToEvent(db, updateId, companyId);
     const target = returnTo.startsWith("/") && !returnTo.startsWith("//") ? returnTo : "/";
     return Response.redirect(new URL(target, request.url), 303);
   } catch (error) {

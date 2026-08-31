@@ -49,7 +49,7 @@ curl -fsS http://127.0.0.1:8021/api/health
 
 ## 行业周报
 
-生产服务不启动旧的按公司调度器。M6 仅通过 `vercel.json` 每周一北京时间 09:00 调用 `/api/cron/industry-weekly`，按行业列表页增量生成一页周报。详细配置见 [`docs/industry-weekly.md`](docs/industry-weekly.md)。
+生产服务不启动旧的按公司调度器。M6 仅通过 `vercel.json` 每周一北京时间 09:00 调用 `/api/cron/industry-weekly`，按行业列表页增量生成一页周报。周报会记录 FDE 的真实选择时间，并显示连续四周、每周至少 3 条的运行验收进度；无目标客户的条目可在页面选择客户后写入档案。详细配置见 [`docs/industry-weekly.md`](docs/industry-weekly.md)。
 
 以下是冻结保留的旧调度器规则，仅在显式调用旧手动接口时适用：
 
