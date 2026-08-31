@@ -1,0 +1,3 @@
+Assist - Procore
+Procore Assist can answer questions based on information in your project. It can help you find project information, summarize results, and draft reports.
+Procore Assist can use supported tools to complete actions in the project after you review the request.

@@ -92,6 +92,37 @@ export interface EventRecord {
   summary: string;
 }
 
+export interface RelationshipRecord {
+  id: string;
+  companyId: string;
+  counterparty: string;
+  kind: "customer" | "supplier" | "it_vendor" | "competitor" | "investor";
+  amount: string;
+  periodStart: string;
+  periodEnd: string;
+}
+
+export interface RelationshipCollection {
+  source: SourceInput;
+  company: SourcedRecord<CompanyRecord>;
+  relationships: Array<SourcedRecord<RelationshipRecord>>;
+}
+
+export interface PeerBenchmark {
+  peer: string;
+  products: string;
+  approach: string;
+  source: SourceInput;
+  excerpt: string;
+}
+
+export interface SearchCandidate {
+  title: string;
+  url: string;
+  snippet: string;
+  publishedAt: string;
+}
+
 export interface OrgUnitRecord {
   id: string;
   companyId: string;

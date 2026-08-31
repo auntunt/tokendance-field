@@ -17,6 +17,7 @@ const sourceFiles = [
   "lib/dossier/m3-repository.ts",
   "lib/dossier/snapshot.ts",
   "lib/dossier/html.ts",
+  "lib/dossier/m5-repository.ts",
   "lib/collectors/source-text.ts",
   "lib/collectors/job-posting.ts",
   "lib/collectors/procurement.ts",
@@ -26,6 +27,9 @@ const sourceFiles = [
   "lib/collectors/corporate-registry.ts",
   "lib/collectors/official-website.ts",
   "lib/collectors/investor-interaction.ts",
+  "lib/collectors/search-results.ts",
+  "lib/collectors/vendor-case.ts",
+  "lib/collectors/peer-case.ts",
   "lib/generate/opportunities.ts",
   "lib/generate/entry-prep.ts",
 ];
