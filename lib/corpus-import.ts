@@ -205,7 +205,7 @@ export function importCorpus(companies: CorpusCompany[], fetchedAt: string): Com
 /** 名单条目转档案：只落身份，facts 一律空。
  *  空的 facts 是这层的正确状态——报告里它显示成一整行「未核实」，
  *  正好告诉人「这家该查但还没查」。填个占位反而会把待办藏起来。 */
-/** 抓取产物：scripts/fetch-filings.mjs 写出的那份 data/filing-facts.json。
+/** 抓取产物：scripts/fetch-filings.ts 写出的那份 data/filing-facts.json。
  *  只认已经装好出处的 Sourced，这一层不做任何加工——
  *  加工在抽取层做完了，这里再动就等于把「出处」和「值」拆开过一次手。 */
 export type FilingFacts = {

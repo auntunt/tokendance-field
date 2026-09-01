@@ -30,5 +30,16 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules", "examples", "db/schema.ts"]
+  "exclude": [
+    "node_modules",
+    "examples",
+    "db/schema.ts",
+    "audit/**/*.ts",
+    "tests/**/*.ts",
+    "scripts/build-report.ts",
+    "scripts/check-env.ts",
+    "scripts/discover-companies.ts",
+    "scripts/fetch-filings.ts",
+    "scripts/seed-fde-signals.ts"
+  ]
 }

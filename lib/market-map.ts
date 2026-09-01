@@ -180,7 +180,7 @@ export function buildMarketMap(signals: Signal[], people: string[] = []): Market
 //
 // 刻意不提供求和。营收口径的 3 亿和出货量口径的 3 亿加起来是 6，
 // 而 6 什么也不是。界面上那句"不合计"不是偷懒，是这张表唯一诚实的算法。
-// 见 tests/market-map.test.mjs 里对"不导出求和函数"的断言。
+// 见 tests/market-map.test.ts 里对"不导出求和函数"的断言。
 
 /** 只有真的在谈规模的情报才进这张表，避免把随便一个日期数字当成盘子。 */
 const SCALE_WORDS = ["规模", "市场", "份额", "营收", "收入", "盘子", "预估", "客单", "总量", "产值", "出货", "存量", "空间"];

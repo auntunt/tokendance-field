@@ -122,7 +122,7 @@ async function throttleSearch(lastAt: number, previousProvider: ResearchProvider
 }
 
 // looksDegraded / relevantToEntity 放在 lib/query-intake.ts 里，
-// 和纠错、抽名、路由一起被 tests/query-intake.test.mjs 覆盖。
+// 和纠错、抽名、路由一起被 tests/query-intake.test.ts 覆盖。
 // 这两条规则最容易悄悄失效（判错不报错，只是结果变垃圾），必须有测试。
 function ensureQuerySchema(db: ReturnType<typeof getDb>) {
   db.exec(`

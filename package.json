@@ -8,11 +8,19 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.tools.json",
     "dossier:bootstrap": "tsx scripts/bootstrap-dossier.ts",
     "industry:validate-feed": "tsx scripts/validate-industry-weekly-feed.ts",
+    "report:build": "tsx scripts/build-report.ts",
+    "env:check": "tsx scripts/check-env.ts",
     "start": "node .next/standalone/server.js",
-    "test": "npm run build && node --test --test-concurrency=4 \"tests/*.test.mjs\"",
+    "test": "npm run build && tsx --test --test-concurrency=4 tests/*.test.ts",
     "lint": "eslint . --ignore-pattern .next"
+  },
+  "postcss": {
+    "plugins": {
+      "@tailwindcss/postcss": {}
+    }
   },
   "dependencies": {
     "better-sqlite3": "12.4.1",
@@ -28,6 +36,7 @@
     "@types/react-dom": "19.2.5",
     "eslint": "9.39.4",
     "eslint-config-next": "16.3.3",
+    "jiti": "2.7.0",
     "tailwindcss": "4.2.1",
     "tsx": "4.23.13",
     "typescript": "5.9.3"

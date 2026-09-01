@@ -190,7 +190,7 @@ DELETE `/api/monitor/:id` — 移除条目
 `lib/fde-roster.ts` 和 `data/filing-facts.json` 不动，行为不变。  
 改变的只是框架语义：FDE 231 家 = 第一个 MonitorSet 实例，自动加入 `monitor_entries`（`addedFrom: "keyword"`，keywords 来自 `DISCOVERY_TERMS`）。
 
-`build-report.mjs` 加一行注释标注这一点；`app/report/route.ts` 报告页标题旁加「FDE 监控集 · 2026」副标题，说明这是本引擎的一个用例实例，不是产品全貌。
+`build-report.ts` 加一行注释标注这一点；`app/report/route.ts` 报告页标题旁加「FDE 监控集 · 2026」副标题，说明这是本引擎的一个用例实例，不是产品全貌。
 
 ---
 
@@ -213,8 +213,8 @@ DELETE `/api/monitor/:id` — 移除条目
 | `lib/company-profile.ts` | `coverageOf` 排除 unverified |
 | `lib/corpus-import.ts` | `detectRelay` + `ceilingGrade` 去重 |
 | `report-html.ts` | 口径说明文字；`publishedAt` 优先显示 |
-| `tests/build-kernel.mjs` | allowlist 加 `lib/query-intake.ts` `lib/monitor-set.ts` |
-| `scripts/build-report.mjs` | FDE 监控集实例标注 |
+| `tests/build-kernel.ts` | allowlist 加 `lib/query-intake.ts` `lib/monitor-set.ts` |
+| `scripts/build-report.ts` | FDE 监控集实例标注 |
 
 ### 不动
 `lib/field-core.ts`（六道门纪律，不可动）、`lib/ontology.ts`、`lib/fde-roster.ts`、`lib/dedup.ts`、`lib/extractor.ts`（entity typing 直接复用）、`db.ts`、`app/report/route.ts`（report chain 保持隔离）
@@ -251,6 +251,6 @@ DELETE `/api/monitor/:id` — 移除条目
 6. `lib/monitor-set.ts` + `app/api/monitor/route.ts`
 7. 监控集 UI
 8. 口径修复 #1 + #4（最小，随时穿插）
-9. build-kernel.mjs allowlist + 全套测试
+9. build-kernel.ts allowlist + 全套测试
 
 步骤 1-3 可以独立跑通（世纪互联验收），不依赖 4-8。

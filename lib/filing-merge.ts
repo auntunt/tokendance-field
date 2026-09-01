@@ -1,7 +1,7 @@
 // 把一次抓取的结果合并进已有的 data/filing-facts.json。
 //
 // 为什么需要这个文件（真出过事）：
-// scripts/fetch-filings.mjs 原来是直接 writeFileSync(outFile, { companies: 本次结果 })。
+// scripts/fetch-filings.ts 原来是直接 writeFileSync(outFile, { companies: 本次结果 })。
 // 全量跑没问题，但 `--only 301236` 只跑一家时，本次结果只有一条，
 // 于是整份产物从 13 家变成 1 家——另外 12 家的事实被静默抹掉。
 // 今天调试的时候就这么干过一次。抹掉不报错、不留痕，下一次 build-report

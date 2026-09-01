@@ -1,0 +1,24 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "allowImportingTsExtensions": true,
+    "incremental": false,
+    "target": "ES2022",
+    "strict": false
+  },
+  "include": [
+    "audit/**/*.ts",
+    "tests/**/*.ts",
+    "scripts/build-report.ts",
+    "scripts/check-env.ts",
+    "scripts/discover-companies.ts",
+    "scripts/fetch-filings.ts",
+    "scripts/seed-fde-signals.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    ".next",
+    ".test-build",
+    ".report-build"
+  ]
+}

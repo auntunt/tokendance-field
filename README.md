@@ -20,6 +20,18 @@
 
 详细边界与数据结构见 [`docs/research-pipeline.md`](docs/research-pipeline.md)。
 
+## TypeScript 约束
+
+项目的一方运行时代码、测试、审计工具、维护脚本和 ESLint 配置统一使用 TypeScript/TSX，不保留 JavaScript、JSX、MJS 或 CJS 源文件。`tsconfig.json` 对应用与正式运行脚本执行严格检查；`tsconfig.tools.json` 单独覆盖从早期 JavaScript 迁移来的审计、测试与离线工具，避免它们绕过类型检查。
+
+```bash
+npm run typecheck
+npm run lint
+npm test
+```
+
+PostCSS 配置放在 `package.json` 的 `postcss` 字段中，因为 Next.js 16 的配置发现逻辑不读取 `postcss.config.ts`。`package-lock.json` 中出现的 `.mjs` 字符串只是第三方包入口元数据，不是本项目的 JavaScript 源码。
+
 ## 生产结构
 
 - 容器内端口：`8800`

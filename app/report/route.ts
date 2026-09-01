@@ -20,7 +20,7 @@ export const dynamic = "force-dynamic";
  *
  * standalone 产物的 cwd 是 .next/standalone，而 build 时会把项目根的 reports/
  * **拷一份**进去。用 cwd 的话，production 下读到的是 build 那一刻的快照：
- * 之后每次 node scripts/build-report.mjs 写的都是项目根那份，服务这边看不到，
+ * 之后每次 npm run report:build 写的都是项目根那份，服务这边看不到，
  * 除非重新 next build。那就等于「定期重跑」出不来新数据，这条路由白接。
  *
  * 所以从 cwd 往上找第一个含 reports/ 的目录，让 dev 和 standalone 都落到
@@ -42,7 +42,7 @@ function reportsDir(): string {
 }
 
 const REPORTS_DIR = reportsDir();
-/** 只认 build-report.mjs 的命名，避免把 history/ 里的快照或别的东西当报告发出去。 */
+/** 只认 build-report.ts 的命名，避免把 history/ 里的快照或别的东西当报告发出去。 */
 const REPORT_NAME = /^fde-report-\d{4}-\d{2}-\d{2}\.html$/;
 
 /** 最新一份报告。按文件名排序而不是 mtime：名字里带的是数据日期，
@@ -75,7 +75,7 @@ function notBuiltYet(): Response {
 </style></head><body><div class="box">
 <h1>情报报告尚未生成</h1>
 <p>报告是一次性产出的单文件 HTML，需要先跑一次生成脚本：</p>
-<p><code>node scripts/build-report.mjs</code></p>
+<p><code>npm run report:build</code></p>
 <p>跑完刷新本页即可。生成的文件同时留在 <code>reports/</code> 下，可以直接发给别人。</p>
 <p><a href="/">← 回情报台</a></p>
 </div></body></html>`;
