@@ -11,6 +11,7 @@
     "typecheck": "tsc --noEmit && tsc -p tsconfig.tools.json",
     "dossier:bootstrap": "tsx scripts/bootstrap-dossier.ts",
     "industry:validate-feed": "tsx scripts/validate-industry-weekly-feed.ts",
+    "production:check": "tsx scripts/check-production.ts",
     "report:build": "tsx scripts/build-report.ts",
     "env:check": "tsx scripts/check-env.ts",
     "start": "node .next/standalone/server.js",

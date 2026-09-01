@@ -20,10 +20,10 @@
 三家验收公司的官方入口与行业隔离规则见 [`relay-source-allowlist.md`](relay-source-allowlist.md)。拿到中转 URL 后，先运行：
 
 ```sh
-npm run industry:validate-feed -- construction-digitalization https://你的中转域名/feed.json
+npm run production:check -- --file .env
 ```
 
-校验结果必须为 `ok: true`；有效条目少于 3 条时命令会提示该 feed 单独不足以完成当周 M6 验收。
+检查必须通过；真实 Feed 去重后的有效条目少于 3 条时命令会失败，不能开始 M6 运行验收。
 
 手动触发示例：
 

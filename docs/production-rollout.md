@@ -19,15 +19,20 @@
 中转层的官方来源范围见 [`relay-source-allowlist.md`](relay-source-allowlist.md)。配置生产环境前先校验真实 URL：
 
 ```sh
-npm run industry:validate-feed -- construction-digitalization https://你的中转域名/feed.json
+npm run production:check -- --file .env
 ```
 
+该命令会拒绝示例占位值、非持久化路径、复用登录密码的 Cron 密钥、错误行业、非 HTTPS 中转地址，以及合计不足 3 条有效记录的真实 Feed。只检查配置形状、不请求 Feed 时可追加 `--skip-feed`。
+
 ## 2. 构建和部署
+
+Pull Request 的 `Verify / code` 与 `Verify / production-image` 两项检查必须先通过；它们分别覆盖 TypeScript、测试、依赖审计、生产配置入口和 Linux/amd64 镜像。若仓库尚未启用分支保护，合并前也要在 PR 页面人工确认这两项为绿色。
 
 在可信构建机上运行：
 
 ```bash
 npm ci
+npm run typecheck
 npm run lint
 npm test
 DOCKER_BUILDKIT=1 docker buildx build --platform linux/amd64 -f Dockerfile.prod -t tokendance-field:latest --load .
