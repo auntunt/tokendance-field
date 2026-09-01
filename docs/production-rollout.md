@@ -48,6 +48,8 @@ curl -fsS http://127.0.0.1:8021/api/health
 
 ## 4. GitHub Actions
 
+先把 `acceptance-hardening` 合并到默认分支 `main`。GitHub 的定时任务只从默认分支读取工作流；分支未合并时，计划任务不会开始运行。
+
 在仓库 Actions secrets 添加：
 
 | Secret | 值 |

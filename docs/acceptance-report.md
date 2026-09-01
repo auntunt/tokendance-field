@@ -42,7 +42,7 @@
 
 ## 当前上线状态
 
-2026-09-01 只读检查时，`www.field.tokendance.cool` 与 `infoget.tokenplaza.cc` 健康检查均为 200，但行业周报路径仍为 404，说明公网仍运行旧版本。新镜像、持久化初始化和 GitHub Actions 定时任务已经准备好；在服务器部署新镜像并配置 feed 与两个 Actions secrets 之前，真实四周计时尚未开始。
+2026-09-01 只读检查时，`www.field.tokendance.cool` 与 `infoget.tokenplaza.cc` 健康检查均为 200，但行业周报路径仍为 404，说明公网仍运行旧版本。新镜像、持久化初始化和 GitHub Actions 定时任务已经准备好；在验收分支合入 `main`、服务器部署新镜像并配置 feed 与两个 Actions secrets 之前，真实四周计时尚未开始。
 
 ## 唯一未到期的验收门槛
 

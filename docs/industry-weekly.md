@@ -34,6 +34,8 @@ curl -H "Authorization: Bearer $CRON_SECRET" https://你的域名/api/cron/indus
 
 ## GitHub Actions 配置
 
+先把包含工作流的验收分支合并到默认分支 `main`；GitHub 定时任务只从默认分支运行。
+
 在 GitHub 仓库的 `Settings → Secrets and variables → Actions` 中添加：
 
 | Secret | 内容 |
