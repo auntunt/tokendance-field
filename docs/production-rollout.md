@@ -16,6 +16,12 @@
 
 中转 JSON 必须符合 [`industry-weekly.md`](industry-weekly.md) 的字段要求，并且每个 `url` 指向原始列表页或详情页。不要把搜索结果摘要当来源。
 
+中转层的官方来源范围见 [`relay-source-allowlist.md`](relay-source-allowlist.md)。配置生产环境前先校验真实 URL：
+
+```sh
+npm run industry:validate-feed -- construction-digitalization https://你的中转域名/feed.json
+```
+
 ## 2. 构建和部署
 
 在可信构建机上运行：

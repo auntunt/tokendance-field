@@ -9,6 +9,7 @@
     "dev": "next dev",
     "build": "next build",
     "dossier:bootstrap": "tsx scripts/bootstrap-dossier.ts",
+    "industry:validate-feed": "tsx scripts/validate-industry-weekly-feed.ts",
     "start": "node .next/standalone/server.js",
     "test": "npm run build && node --test --test-concurrency=4 \"tests/*.test.mjs\"",
     "lint": "eslint . --ignore-pattern .next"

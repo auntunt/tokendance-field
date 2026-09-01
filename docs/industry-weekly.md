@@ -17,6 +17,14 @@
 
 中转接口返回 `items` 数组，每项包含 `date`、`kind`、`companyId`、`title`、`summary`、`url` 和 `sourceType`。`url` 必须指向原始列表页或详情页，而不是搜索结果摘要。
 
+三家验收公司的官方入口与行业隔离规则见 [`relay-source-allowlist.md`](relay-source-allowlist.md)。拿到中转 URL 后，先运行：
+
+```sh
+npm run industry:validate-feed -- construction-digitalization https://你的中转域名/feed.json
+```
+
+校验结果必须为 `ok: true`；有效条目少于 3 条时命令会提示该 feed 单独不足以完成当周 M6 验收。
+
 手动触发示例：
 
 ```sh
