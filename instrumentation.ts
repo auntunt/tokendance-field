@@ -1,8 +1,5 @@
-// Next.js 服务启动时拉起 FDE 查询包调度器。
-// 只在 Node.js 运行时启用，构建期和 Edge 不启动。
+// M6 只允许 Vercel Cron 每周按行业生成周报。
+// 旧的按公司调度器保留在原模块中，但生产服务不再自动导入或启动它。
 export async function register() {
-  if (process.env.NEXT_RUNTIME === "nodejs") {
-    const { startScheduler } = await import("./lib/scheduler");
-    startScheduler(Number(process.env.FDE_SCHEDULER_INTERVAL_HOURS) || 6);
-  }
+  return Promise.resolve();
 }

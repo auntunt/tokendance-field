@@ -36,7 +36,7 @@ SKIP_BUILD=0
 
 if [[ $SKIP_BUILD -eq 0 ]]; then
   echo "▸ 本机生成报告"
-  node scripts/build-report.mjs
+  npm run report:build
 fi
 
 # 取最新一份，而不是按当天日期拼文件名：重跑失败时宁可推一份旧的上去，

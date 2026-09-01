@@ -9,7 +9,7 @@
 //
 // 判重与六道门无关，也永远不许碰门：门问的是"这个判断的证据够不够"，
 // 判重问的是"这段材料是不是同一份"。两件事混在一起，就会出现
-// "因为查重通过所以证据变硬"这种荒谬推论。见 tests/discipline.test.mjs。
+// "因为查重通过所以证据变硬"这种荒谬推论。见 tests/discipline.test.ts。
 import { createHash } from "node:crypto";
 import { normalizeCorpus } from "./normalize-text";
 
@@ -43,7 +43,7 @@ export type RepeatVerdict = {
 };
 
 // 归一化规则不在这里——它同时被前端版图层使用，单独放在 lib/normalize-text.ts。
-// 这里原样转出，判重的对外接口不变（tests/dedup.test.mjs 仍从 dedup 取 normalizeCorpus）。
+// 这里原样转出，判重的对外接口不变（tests/dedup.test.ts 仍从 dedup 取 normalizeCorpus）。
 // 千万不要在这里再抄一份：两份归一化规则一旦分叉，前端会说“两个来源”而后端说
 // “同一份转载”，而两边都自称事实。
 export { normalizeCorpus } from "./normalize-text";

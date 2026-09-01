@@ -71,7 +71,7 @@ export const RELATIONS: Array<{ id: RelationId; label: string; words: string[]; 
 
 /** 局部边界五问：企业关系语境下的重写。缺一项即无法过第二道门。
  *  label 写成问句而不是术语——界面上这五行是要人回答的问题，不是要人认识的名词。
- *  key 与数量是内核契约（见 tests/discipline.test.mjs），只有文案可改。 */
+ *  key 与数量是内核契约（见 tests/discipline.test.ts），只有文案可改。 */
 export const SCOPE_FIELDS: Array<{ key: keyof LocalScope; label: string; placeholder: string }> = [
   { key: "entityScope", label: "涉及哪几家公司", placeholder: "写工商全称。母公司还是子公司要分清" },
   { key: "marketRegion", label: "在哪个市场或地区", placeholder: "华东 / 全国 / 某个具体客户群" },

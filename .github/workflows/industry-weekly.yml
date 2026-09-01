@@ -1,0 +1,48 @@
+name: FDE industry weekly
+
+on:
+  schedule:
+    - cron: "0 1 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fde-industry-weekly
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Generate the weekly report
+        env:
+          FIELD_BASE_URL: ${{ secrets.FIELD_BASE_URL }}
+          FIELD_CRON_SECRET: ${{ secrets.FIELD_CRON_SECRET }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ ! "${FIELD_BASE_URL}" =~ ^https:// ]]; then
+            echo "FIELD_BASE_URL must be an HTTPS origin"
+            exit 1
+          fi
+          if [[ -z "${FIELD_CRON_SECRET}" ]]; then
+            echo "FIELD_CRON_SECRET is not configured"
+            exit 1
+          fi
+
+          response_file="$(mktemp)"
+          status="$(curl --silent --show-error \
+            --max-time 240 \
+            --output "${response_file}" \
+            --write-out "%{http_code}" \
+            --header "Authorization: Bearer ${FIELD_CRON_SECRET}" \
+            "${FIELD_BASE_URL%/}/api/cron/industry-weekly")"
+          jq . "${response_file}"
+          if [[ "${status}" != "200" ]]; then
+            echo "Industry weekly endpoint returned HTTP ${status}"
+            exit 1
+          fi
+          jq --exit-status '.ok == true and (.reportUrl | type == "string")' "${response_file}" >/dev/null

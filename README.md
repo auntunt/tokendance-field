@@ -1,6 +1,10 @@
-# FIELD · Evidence OS
+# FIELD · FDE 客户档案
 
-单容器的研究与专家判断系统。Next.js 同时提供前端与 API，SQLite 数据库存放在 Docker volume 中，Nginx 只反代本机端口。
+面向 FDE 进场前桌面研究的客户档案系统。Next.js 同时提供前端与 API，SQLite 保存带来源的客户、行业、组织、系统、事件和机会数据。
+
+当前主链路是：`选择客户 → 采集法定文件/招聘/招投标/官网 → 固定 schema → 机会地图与进场准备 → HTML 档案 → 再次生成时显示变化`。入口为 `/dossier/<companyId>`；行业周报入口为 `/industry-weekly/<industryId>`。
+
+旧研究与关系图模块为兼容保留，但不再由生产服务自动启动按公司轮询。
 
 ## 研究链路
 
@@ -15,6 +19,18 @@
 - `/api/research` 提供只读的检索通道、来源、主张、交叉验证与查询关系概览。
 
 详细边界与数据结构见 [`docs/research-pipeline.md`](docs/research-pipeline.md)。
+
+## TypeScript 约束
+
+项目的一方运行时代码、测试、审计工具、维护脚本和 ESLint 配置统一使用 TypeScript/TSX，不保留 JavaScript、JSX、MJS 或 CJS 源文件。`tsconfig.json` 对应用与正式运行脚本执行严格检查；`tsconfig.tools.json` 单独覆盖从早期 JavaScript 迁移来的审计、测试与离线工具，避免它们绕过类型检查。
+
+```bash
+npm run typecheck
+npm run lint
+npm test
+```
+
+PostCSS 配置放在 `package.json` 的 `postcss` 字段中，因为 Next.js 16 的配置发现逻辑不读取 `postcss.config.ts`。`package-lock.json` 中出现的 `.mjs` 字符串只是第三方包入口元数据，不是本项目的 JavaScript 源码。
 
 ## 生产结构
 
@@ -41,11 +57,19 @@ docker compose -f docker-compose.prod.yml up -d field
 curl -fsS http://127.0.0.1:8021/api/health
 ```
 
+镜像在构建时会用真实公开来源样本生成广联达验收档案。首次启动、且 `/data/fde-dossier.sqlite` 不存在时才复制到 volume；后续启动和升级不会覆盖已经产生的档案、周报选择或 `DossierRun`。本机也可用 `npm run dossier:bootstrap -- /tmp/fde-dossier.sqlite` 单独生成并检查种子库，已有目标默认拒绝覆盖。
+
 正式域名 `www.field.tokendance.cool` 由 Nginx 反代至 `http://127.0.0.1:8021`。不要把 8021 直接暴露到公网。
 
-## 定时补数
+完整上线与首周验收步骤见 [`docs/production-rollout.md`](docs/production-rollout.md)。
 
-生产服务由 `instrumentation.ts` 启动内置调度器，默认在启动 90 秒后执行第一批，之后每 6 小时轮询最久未查询的公司。每次只查询 3 家，避免搜索源被限流。
+## 行业周报
+
+生产服务不启动旧的按公司调度器。M6 由 GitHub Actions 每周一北京时间 09:00 调用 Docker 服务的 `/api/cron/industry-weekly`，按行业列表页增量生成一页周报；也可在 Actions 页面手动立即运行。这样 SQLite 始终写入服务器上的持久化 volume，不依赖 Vercel 临时文件系统。
+
+部署后需要在 GitHub 仓库 Actions secrets 中配置 `FIELD_BASE_URL`（例如 `https://www.field.tokendance.cool`）和 `FIELD_CRON_SECRET`；后者必须与服务器 `.env` 的 `CRON_SECRET` 完全一致。周报会记录 FDE 的真实选择时间，并显示连续四周、每周至少 3 条的运行验收进度；无目标客户的条目可在页面选择客户后写入档案。详细配置见 [`docs/industry-weekly.md`](docs/industry-weekly.md)。
+
+以下是冻结保留的旧调度器规则，仅在显式调用旧手动接口时适用：
 
 自动候选写入关系图前会经过 `lib/scheduler-policy.ts`：
 

@@ -10,6 +10,7 @@ services:
       PORT: 8800
       HOSTNAME: 0.0.0.0
       DATABASE_PATH: /data/tokendance-field.sqlite
+      DOSSIER_DB_PATH: /data/fde-dossier.sqlite
       # 报告从 volume 读，不从镜像读。报告是每天重跑的数据，
       # 打进镜像就意味着「换一份数据要重新构建、重新推 300MB」。
       # 传新报告：docker cp reports/xxx.html tokendance-field-1:/reports/
