@@ -15,7 +15,9 @@
     "report:build": "tsx scripts/build-report.ts",
     "env:check": "tsx scripts/check-env.ts",
     "start": "node .next/standalone/server.js",
-    "test": "npm run build && tsx --test --test-concurrency=4 tests/*.test.ts",
+    "test": "npm run test:smoke",
+    "test:smoke": "npm run build && tsx --test --test-concurrency=1 tests/dossier-bootstrap.test.ts tests/fde-dossier-flow.test.ts tests/m4-dossier-output.test.ts tests/m6-industry-weekly.test.ts tests/production-config.test.ts tests/scheduler-wiring.test.ts tests/typescript-only.test.ts",
+    "test:full": "npm run build && tsx --test --test-concurrency=1 tests/*.test.ts",
     "lint": "eslint . --ignore-pattern .next"
   },
   "postcss": {

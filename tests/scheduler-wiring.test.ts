@@ -37,14 +37,17 @@ test("Docker 生产环境只由 GitHub Actions 每周触发一次行业周报", 
   assert.doesNotMatch(workflow, /scheduler\/run|FDE_SCHEDULER/);
 });
 
-test("Pull Request 必须验证 TypeScript、测试、依赖和生产镜像", async () => {
+test("Pull Request 跑关键检查，完整回归与生产镜像只在主分支或手动运行", async () => {
   const workflow = await source("../.github/workflows/ci.yml");
   assert.match(workflow, /pull_request:/);
+  assert.match(workflow, /workflow_dispatch:/);
   assert.match(workflow, /npm run typecheck/);
   assert.match(workflow, /npm run lint/);
   assert.match(workflow, /npm test/);
   assert.match(workflow, /npm audit --audit-level=high/);
   assert.match(workflow, /npm run production:check/);
+  assert.match(workflow, /full-regression:[\s\S]*github\.event_name == 'push'[\s\S]*npm run test:full/);
+  assert.match(workflow, /production-image:[\s\S]*github\.event_name == 'push'/);
   assert.match(workflow, /Dockerfile\.prod/);
   assert.match(workflow, /platforms: linux\/amd64/);
 });

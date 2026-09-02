@@ -26,7 +26,7 @@ npm run production:check -- --file .env
 
 ## 2. 构建和部署
 
-Pull Request 的 `Verify / code` 与 `Verify / production-image` 两项检查必须先通过；它们分别覆盖 TypeScript、测试、依赖审计、生产配置入口和 Linux/amd64 镜像。若仓库尚未启用分支保护，合并前也要在 PR 页面人工确认这两项为绿色。
+Pull Request 先通过 `Verify / code`，覆盖 TypeScript、Lint、关键冒烟检查、依赖审计和生产配置入口。完整回归与 Linux/amd64 镜像只在代码合入 `main` 或从 Actions 手动触发时运行，避免日常修改重复执行 329 项测试和完整镜像构建。真正部署前必须确认 `Verify / full-regression` 与 `Verify / production-image` 为绿色。
 
 在可信构建机上运行：
 
@@ -34,7 +34,7 @@ Pull Request 的 `Verify / code` 与 `Verify / production-image` 两项检查必
 npm ci
 npm run typecheck
 npm run lint
-npm test
+npm run test:full
 DOCKER_BUILDKIT=1 docker buildx build --platform linux/amd64 -f Dockerfile.prod -t tokendance-field:latest --load .
 docker save tokendance-field:latest | gzip > /tmp/tokendance-field.tar.gz
 ```

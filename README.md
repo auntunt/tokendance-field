@@ -30,6 +30,8 @@ npm run lint
 npm test
 ```
 
+`npm test` 只运行客户档案、周报、生产配置和 TypeScript 约束等关键冒烟检查，适合日常修改与 Pull Request。完整回归保留为 `npm run test:full`，只在合入 `main`、准备发布或从 Actions 手动触发时运行；生产镜像也采用同一发布级门槛。
+
 PostCSS 配置放在 `package.json` 的 `postcss` 字段中，因为 Next.js 16 的配置发现逻辑不读取 `postcss.config.ts`。`package-lock.json` 中出现的 `.mjs` 字符串只是第三方包入口元数据，不是本项目的 JavaScript 源码。
 
 ## 生产结构
@@ -62,6 +64,8 @@ curl -fsS http://127.0.0.1:8021/api/health
 正式域名 `www.field.tokendance.cool` 由 Nginx 反代至 `http://127.0.0.1:8021`。不要把 8021 直接暴露到公网。
 
 完整上线与首周验收步骤见 [`docs/production-rollout.md`](docs/production-rollout.md)。
+
+验证结论已整理为可供后续开发团队直接执行的 [`FDE 客户档案后续开发 SOP`](docs/dossier-development-sop.md)，包含详细角色分工、单客户任务表、组织树与人物表规则、M0–M6 阶段门槛及 A1–A9 检查表。
 
 ## 行业周报
 
