@@ -56,9 +56,14 @@ function edgePath(from: GraphNode, to: GraphNode, offset: number) {
 export function RelationGraph({ signals, onOpenSignal }: { signals: Signal[]; onOpenSignal: (id: string) => void }) {
   const [filter, setFilter] = useState<string[]>([]);
   const [node, setNode] = useState("");
+  const [overview, setOverview] = useState(false);
   const [edge, setEdge] = useState<GraphEdge | null>(null);
   const [labels, setLabels] = useState<"smart" | "all">("smart");
   const graph = useMemo(() => buildGraph(signals, filter), [signals, filter]);
+  // 默认从最值得调查的枢纽开始，而不是把所有簇同时摊开。
+  // 派生焦点，不在 effect 内同步 setState，避免额外渲染。
+  const hub = [...graph.nodes].sort((left, right) => right.degree - left.degree || left.id.localeCompare(right.id))[0]?.id || "";
+  const focusNode = overview ? "" : (graph.nodes.some(item => item.id === node) ? node : hub);
   const parallelOffsets = useMemo(() => {
     const grouped = new Map<string, GraphEdge[]>();
     for (const item of graph.edges) {
@@ -143,7 +148,7 @@ export function RelationGraph({ signals, onOpenSignal }: { signals: Signal[]; on
     watch.observe(target);
     return () => watch.disconnect();
   }, []);
-  const focusEdges = node ? graph.edges.filter(item => item.from === node || item.to === node) : [];
+  const focusEdges = focusNode ? graph.edges.filter(item => item.from === focusNode || item.to === focusNode) : [];
   const evidence = edge ? edge.signalIds.map(id => signals.find(item => item.id === id)).filter((item): item is Signal => Boolean(item)) : [];
 
   function toggle(id: string) {
@@ -152,7 +157,7 @@ export function RelationGraph({ signals, onOpenSignal }: { signals: Signal[]; on
   }
 
   return <>
-    <ViewHeader kicker="关联图谱" title="谁投了谁，谁给谁供货，谁在抢谁" copy="每个关系簇独立排布。点公司只看它的直接关系，点线看支撑材料。虚线是线索，实线是已经确认。" />
+    <ViewHeader kicker="关系调查" title="从一个主体出发，顺着证据看关系" copy="默认聚焦关系最多的主体。点节点展开一跳关系，点连线查看原始材料与可用性；需要时再退回全局概览。" />
     <div className="relation-filters">
       <span>关系类型</span>
       {RELATIONS.map(item => <button key={item.id} className={filter.length === 0 || filter.includes(item.id) ? "on" : ""} onClick={() => toggle(item.id)}><i style={{ background: RELATION_COLOR[item.id] }} />{item.label}</button>)}
@@ -162,6 +167,7 @@ export function RelationGraph({ signals, onOpenSignal }: { signals: Signal[]; on
         <button className={labels === "smart" ? "on" : ""} onClick={() => setLabels("smart")}>重点</button>
         <button className={labels === "all" ? "on" : ""} onClick={() => setLabels("all")}>全部</button>
       </span>
+      <button className={focusNode ? "clear" : "on"} onClick={() => { setOverview(value => !value); setEdge(null); }}>{focusNode ? "查看全图" : "回到调查中心"}</button>
       <em>{graph.nodes.length} 家公司 · {graph.edges.length} 条关系 · {clusters.length} 个关系簇 · {graph.edges.filter(item => item.executable).length} 条已确认</em>
     </div>
     <div className="relation-stage">
@@ -182,7 +188,7 @@ export function RelationGraph({ signals, onOpenSignal }: { signals: Signal[]; on
             const to = graph.nodes.find(candidate => candidate.id === item.to);
             if (!from || !to) return null;
             const active = edge?.key === item.key;
-            const dim = Boolean(node) && item.from !== node && item.to !== node;
+            const dim = Boolean(focusNode) && item.from !== focusNode && item.to !== focusNode;
             // 线的颜色表示关系类型；实线 = 已确认，虚线 = 线索。
             const baseTone = active ? "#ffffff" : RELATION_COLOR[item.relation] || edgeTone(item);
             const tone = baseTone;
@@ -206,12 +212,12 @@ export function RelationGraph({ signals, onOpenSignal }: { signals: Signal[]; on
         </span>)}
         {graph.nodes.map(item => {
           const size = nodeSize(item.degree);
-          const related = !node || item.id === node || focusEdges.some(link => link.from === item.id || link.to === item.id);
-          const showLabel = labels === "all" || item.id === node || item.degree >= 3 || graph.nodes.length <= 10;
+          const related = !focusNode || item.id === focusNode || focusEdges.some(link => link.from === item.id || link.to === item.id);
+          const showLabel = labels === "all" || item.id === focusNode || item.degree >= 3 || graph.nodes.length <= 10;
           const isHub = item.degree >= 2;
-          return <button key={item.id} title={item.id} className={`relation-node ${item.id === node ? "selected" : ""} ${showLabel ? "" : "minor"} ${isHub ? "hub" : ""}`}
+          return <button key={item.id} title={item.id} className={`relation-node ${item.id === focusNode ? "selected" : ""} ${showLabel ? "" : "minor"} ${isHub ? "hub" : ""}`}
             style={{ left: `${item.x * 100}%`, top: `${item.y * 100}%`, width: size, height: size, opacity: related ? 1 : .22, borderColor: isHub ? "#ffad21" : "rgba(66,203,213,.5)", background: isHub ? "rgba(255,173,33,.14)" : "rgba(12,20,28,.94)" }}
-            onClick={() => { setNode(current => current === item.id ? "" : item.id); setEdge(null); }}>
+            onClick={() => { setOverview(false); setNode(current => current === item.id ? "" : item.id); setEdge(null); }}>
             {showLabel && <label>{item.id}</label>}
           </button>;
         })}
@@ -230,12 +236,12 @@ export function RelationGraph({ signals, onOpenSignal }: { signals: Signal[]; on
             <span>{item.source} · {gate.executable ? "六项已齐" : `还差 ${6 - gate.passed} 项`}</span>
             {item.sourceUrl && <em>{item.sourceUrl}</em>}
           </button>; })}</div>
-        </> : node ? <>
-          <small>这家公司 · {graph.nodes.find(item => item.id === node)?.degree ?? 0} 条关系</small>
-          <h2>{node}</h2>
-          <h3>直接连着谁</h3>
+        </> : focusNode ? <>
+          <small>调查中心 · {graph.nodes.find(item => item.id === focusNode)?.degree ?? 0} 条直接关系</small>
+          <h2>{focusNode}</h2>
+          <h3>从这里可以继续查</h3>
           <div className="edge-sources">{focusEdges.map(item => <button key={item.key} onClick={() => setEdge(item)}>
-            <b>{item.from === node ? `→ ${item.to}` : `← ${item.from}`}</b>
+            <b>{item.from === focusNode ? `→ ${item.to}` : `← ${item.from}`}</b>
             <span>{relationLabel(item.relation)} · {item.bestGate === 6 ? "已确认" : `还差 ${6 - item.bestGate} 项`} · {item.signalIds.length} 条材料</span>
           </button>)}{!focusEdges.length && <span className="muted-note">当前筛选下没有关系</span>}</div>
         </> : <>

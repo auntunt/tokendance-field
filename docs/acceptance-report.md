@@ -39,10 +39,13 @@
 - Next.js 已升级至 16.3.3，生产与开发依赖审计均为 0 漏洞。
 - Docker 镜像实构建成功；首次启动自动生成 1 家客户、13 个来源、5 个机会和 1 次基线档案。
 - 独立 volume 中档案与周报均返回 200；档案有 209 个来源链接；容器重启前后 `DossierRun` 均为 3，证明启动过程不覆盖已有数据。
+- 2026-09-01 当前提交的本机临时生产容器再次验证：健康、广联达档案和行业周报均为 200；公开验收 Feed 写入 12 条，历史周报范围显示 12 个原始来源链接；容器重启前后 `DossierRun=5`、`IndustryUpdate=12`、`Source=25` 均保持不变。
+- GitHub `Verify / code` 与 `Verify / production-image` 已在提交 `01aad99` 上实际通过，覆盖 329 项测试、依赖审计和 Linux/amd64 镜像构建。
+- 后续验证已分级：Pull Request 只跑关键冒烟集；329 项完整回归与生产镜像保留在合入 `main`、发布前或手动触发，历史完整通过证据不受影响。
 
 ## 当前上线状态
 
-2026-09-01 只读检查时，`www.field.tokendance.cool` 与 `infoget.tokenplaza.cc` 健康检查均为 200，但行业周报路径仍为 404，说明公网仍运行旧版本。新镜像、持久化初始化和 GitHub Actions 定时任务已经准备好；在验收分支合入 `main`、服务器部署新镜像并配置 feed 与两个 Actions secrets 之前，真实四周计时尚未开始。
+2026-09-01 只读检查时，服务器容器健康且 `/api/health` 为 200，但登录后的 `/dossier/002410.SZ`、`/industry-weekly/construction-digitalization` 与 `/api/cron/industry-weekly` 均为 404；容器启动于 2026-08-18，说明公网仍运行旧版本。当前容器已有抽取器与 Claude 密钥，但没有 M6 的数据库路径、Cron 密钥、行业 ID 与 Feed；GitHub 仓库 Actions secrets 数量为 0。新镜像、持久化初始化和工作流代码已经准备好；在验收分支合入 `main`、服务器部署新镜像并配置真实 Feed 与两个 Actions secrets 之前，真实四周计时尚未开始。
 
 ## 唯一未到期的验收门槛
 

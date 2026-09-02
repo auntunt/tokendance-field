@@ -3,68 +3,57 @@
 import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
   Constraints, Feedback, ModelAnalysis, Signal, Snapshot, Verdict,
-  attribute, emptyConstraints, gateState, initialWeights, isExpired,
+  attribute, emptyConstraints, gateState, initialWeights,
   makeSignal, missingGates, normalizeSignal, normalizeWeights,
 } from "../lib/field-core";
 import { proposeConstraints } from "../lib/auto-propose";
-import { PersonRole, RELATIONS, relationLabel } from "../lib/ontology";
+import { RELATIONS, relationLabel } from "../lib/ontology";
 import { ConstraintPanel } from "./console/constraint-panel";
-import { RelationGraph } from "./console/relation-graph";
-import { MarketMapView } from "./console/market-map";
-import { Calibration, EvidenceLedger, Library, RelationClusters, RelationSummary, Rules } from "./console/views";
+import { InvestigationGraph } from "./console/investigation-graph";
+import { Calibration, EvidenceLedger, Library, Rules } from "./console/views";
 import { AIReview, Draft, EvidenceModal, ModelConfig, ModelModal } from "./console/modals";
 import { Candidate, Intake } from "./console/intake";
-import { QueryIntake } from "./console/query-intake";
+import { InvestigationWorkbench } from "./console/investigation-workbench";
+import { IntelligenceDesk } from "./console/intelligence-desk";
 import { FdeQueryPack } from "./console/fde-query-pack";
-import { PeopleView } from "./console/people-view";
 import { PersonNode } from "../lib/people";
+import type { InvestigationSubjectType } from "../lib/investigation/types";
 import { Sandbox } from "./console/sandbox";
 import { EmptyField } from "./console/shared";
-import { compareSignalEventDate, signalEventDateLabel } from "../lib/signal-date";
-import { ResearchOverview } from "./console/research-overview";
 
 /**
- * 导航只有三段，对应实际要干的三件事：收集 → 看关系 → 下结论。
- *
- * 「看关系」和「下结论」是两条独立路线，不互为前置：
- *   看关系（relations）画的是主体之间怎么连的，不看六道门，不需要签字。
- *   下结论（judgment）判的是单条够不够硬，走六道门，需要签字。
- * 它们共用「收集」这一个入口，此外互不阻塞——一条情报可以只上图不判断，也可以只判断不上图。
- *
- * 其余视图（关系簇 / 证据账本 / 校准记录 / 规则设置 / 沙盘推演）不占主导航，
- * 收在各段内部的标签页里，因为它们都是"看已有结果"，不是"要做的事"。
+ * 主路径只有两件事：先研究，再看关系。旧版“六道门判断/签字”不再出现在
+ * 用户流程中；情报的可靠性改由来源、引用与跨来源印证表达。
  */
-type Section = "collect" | "relations" | "judgment";
+type Section = "desk" | "collect" | "relations" | "judgment";
 const SECTIONS: Array<{ id: Section; label: string; hint: string }> = [
-  { id: "collect", label: "检索与采集", hint: "RESEARCH / SOURCES" },
-  { id: "relations", label: "关系网络", hint: "ENTITIES / EDGES" },
-  { id: "judgment", label: "证据判断", hint: "CLAIMS / GATES" },
+  { id: "desk", label: "情报看台", hint: "DESK / FLOW" },
+  { id: "collect", label: "开始收集", hint: "ASK / VERIFY" },
+  { id: "relations", label: "看关系", hint: "ENTITIES / EDGES" },
 ];
-type RelationTab = "关联图谱" | "覆盖版图" | "人物动态" | "关系分类";
 type JudgmentTab = "逐条判断" | "全部情报" | "校准记录" | "推演" | "设置";
 /**
  * 「收集」里的三种入口，区别在于你手上已经有什么：
- *   查情报 —— 只有一句听来的话。系统负责纠错、消歧、拆维度、去搜。
- *   贴材料 —— 已经有 URL 或正文了，直接抽。
- *   FDE 查询包 —— 从上一份报告台账里挑下一家重点公司去查。
+ *   开始研究 —— 只有一句听来的话。系统负责纠错、消歧、拆维度、去搜。
+ *   导入材料 —— 已经有 URL 或正文了，直接抽。
+ *   选择客户 —— 从上一份报告台账里挑下一家重点公司去查。
  * 它们出的候选走同一个 acceptCandidates，六道门一视同仁。
  */
-type CollectTab = "查情报" | "贴材料" | "FDE 查询包";
+type CollectTab = "开始研究" | "行业样本" | "导入材料";
 const TOPIC_RULES = RELATIONS.map(item => ({ id: item.id, words: item.words }));
 const emptyDraft = (): Draft => ({ title: "", evidence: "", source: "人工录入", sourceUrl: "", from: "", to: "", relation: "equity", direction: "forward" });
 
 export function SignalConsole() {
   const [section, setSection] = useState<Section>(() => {
-    if (typeof window === "undefined") return "collect";
+    if (typeof window === "undefined") return "desk";
     const value = new URLSearchParams(window.location.search).get("section");
-    return value === "collect" || value === "relations" || value === "judgment" ? value : "collect";
+    return value === "desk" || value === "collect" || value === "relations" ? value : "desk";
   });
   const [collectTab, setCollectTab] = useState<CollectTab>(() => {
-    if (typeof window === "undefined") return "查情报";
+    if (typeof window === "undefined") return "开始研究";
     const value = new URLSearchParams(window.location.search).get("tab");
-    return value === "查情报" || value === "贴材料" || value === "FDE 查询包" ? value : "查情报";
+    return value === "开始研究" || value === "导入材料" || value === "行业样本" || value === "选择客户" ? value === "选择客户" ? "行业样本" : value : "开始研究";
   });
-  const [relationTab, setRelationTab] = useState<RelationTab>("关联图谱");
   const [judgmentTab, setJudgmentTab] = useState<JudgmentTab>("逐条判断");
   /** 约束面板当前展开的分组。放在这里而不是面板内部：从别的视图跳过来时要能直接指定展开哪一组。 */
   const [openGroup, setOpenGroup] = useState("");
@@ -75,12 +64,13 @@ export function SignalConsole() {
   const [people, setPeople] = useState<PersonNode[]>([]);
   const [selectedId, setSelectedId] = useState("");
   const [query, setQuery] = useState("");
-  // 支持从报告等外部页面直接带参数打开：/?section=collect&tab=FDE 查询包&q=某公司 FDE
+  // 支持从报告等外部页面直接带参数打开：/?section=collect&tab=选择客户&q=某公司 FDE
   const [querySeed, setQuerySeed] = useState(() => {
     if (typeof window === "undefined") return "";
     return new URLSearchParams(window.location.search).get("q") || "";
   });
   const [querySeedNonce, setQuerySeedNonce] = useState(0);
+  const [investigationSubject, setInvestigationSubject] = useState<InvestigationSubjectType>("company");
   const [showAdd, setShowAdd] = useState(false);
   const [draft, setDraft] = useState<Draft>(emptyDraft());
   const [feedbackNote, setFeedbackNote] = useState("");
@@ -135,30 +125,11 @@ export function SignalConsole() {
     return signals.filter(signal => `${signal.title} ${signal.evidence} ${signal.source} ${signal.topics.join(" ")} ${(signal.edges || []).map(edge => `${edge.from} ${edge.to}`).join(" ")}`.toLowerCase().includes(key));
   }, [signals, query]);
 
-  const relationSummary = useMemo<RelationSummary[]>(() => RELATIONS.map(relation => {
-    const evidence = signals.filter(signal => signal.topics.includes(relation.id));
-    const admitted = evidence.filter(signal => gateState(signal).executable && !isExpired(signal));
-    const relatedFeedback = feedback.filter(item => item.topicId === relation.id && item.executionQuality >= 60);
-    const score = admitted.length ? Math.round(admitted.reduce((sum, item) => sum + item.constraints.probability, 0) / admitted.length) : 0;
-    const confirmed = relatedFeedback.filter(item => item.verdict === "confirmed").length;
-    const counter = relatedFeedback.filter(item => item.verdict === "counter").length;
-    return { ...relation, evidence, admitted, confirmed, counter, confidence: Math.max(0, Math.min(99, score + confirmed * 3 - counter * 5)) };
-  }), [signals, feedback]);
-
-  /** 名册是事实清单：加错了就删，不需要过闸也不需要签署。
-   *  关于这个人的判断另走六道门——名册本身不主张任何东西。 */
-  function addPerson(role: PersonRole) {
-    const person: PersonNode = { ...role, id: `person-${Date.now()}-${Math.random().toString(16).slice(2)}`, createdAt: new Date().toISOString() };
-    setPeople(items => [person, ...items]);
-    setToast(`${person.name} 已入册。名册只是事实清单，关于他的判断另走「下结论」`);
-  }
-
   /** 从任何地方跳到某条情报的判断页。第二个参数可直接展开某个待补分组。 */
   function openJudgment(id: string, where = "") {
-    setSelectedId(id); setSection("judgment"); setJudgmentTab("逐条判断"); setOpenGroup(where);
-  }
-  function removePerson(id: string) {
-    setPeople(items => items.filter(item => item.id !== id));
+    // 旧的“逐条判断”已从产品流程退出。保留选中项，方便未来在关系视图里
+    // 展开来源，但不再把用户送进签字/过闸界面。
+    setSelectedId(id); setSection("relations"); setOpenGroup(where);
   }
 
   function updateConstraints(next: Constraints) {
@@ -172,7 +143,7 @@ export function SignalConsole() {
     const signal = makeSignal({ ...draft, edges, origin: "manual" }, weights, TOPIC_RULES);
     setSignals(items => [signal, ...items]);
     setSelectedId(signal.id); setDraft(emptyDraft()); setShowAdd(false);
-    setSection("judgment"); setJudgmentTab("逐条判断");
+    setSection("relations");
     setToast("已收下，正在让模型把范围和证伪草稿补上…");
     void autoEnrichCreated([signal]).then(ok => setToast(ok ? "模型已起草六项草稿，你只需要检查并签字" : "模型起草失败，字段仍可手动补"));
   }
@@ -365,21 +336,16 @@ export function SignalConsole() {
     setToast("模型建议已填入草稿；专家签署仍被清空，需要重新审阅");
   }
 
-  const admittedCount = signals.filter(signal => gateState(signal).executable).length;
-  const edgeCount = signals.reduce((sum, signal) => sum + (signal.edges?.length || 0), 0);
-  const pendingCount = signals.filter(signal => missingGates(signal).length > 0).length;
-  const readyForSign = signals.filter(signal => gateState(signal).passed === 5).length;
 
   return <main className="console-app core-app field-app flat-nav">
     <a className="skip-link" href="#main-workspace">跳到主要内容</a>
     <header className="console-topbar">
-      <button className="console-brand" onClick={() => setSection("collect")} aria-label="回到研究工作台">
+      <button className="console-brand" onClick={() => setSection("desk")} aria-label="回到情报看台">
         <span>F</span><span className="brand-copy"><b>FIELD</b><small>EVIDENCE OS</small></span>
       </button>
       <nav className="section-nav">{SECTIONS.map((item, index) => <button key={item.id}
         className={section === item.id ? "active" : ""} onClick={() => setSection(item.id)}>
         <i>{String(index + 1).padStart(2, "0")}</i><span><b>{item.label}</b><small>{item.hint}</small></span>
-        {item.id === "judgment" && pendingCount > 0 && <em className="nav-badge">{pendingCount}</em>}
       </button>)}</nav>
       <div className="console-search">
         <span>⌕</span>
@@ -388,11 +354,6 @@ export function SignalConsole() {
       </div>
       <div className="console-actions">
         <button className="ghost-action model-action" onClick={() => setShowModel(true)}><i />模型连接{model.model ? " · 已配置" : ""}</button>
-        {/* 情报报告不进三段导航：那三段是「要做的事」（收集→看关系→下结论，六道门那条线），
-            报告是另一条线的产出——不过门、按来源分级呈现。放进 SECTIONS 会让人以为
-            它是流程的第四步。用 <a> 整页跳转而不是 router.push：那是一份独立 HTML 文档，
-            不是 React 路由里的页面。target 另开一页，免得看完报告要退回来重新登录。 */}
-        <a className="ghost-action report-action" href="/report" target="_blank" rel="noopener">打开情报报告 ↗</a>
         <details className="console-more">
           <summary aria-label="更多操作">•••</summary>
           <div>
@@ -409,28 +370,38 @@ export function SignalConsole() {
       </div>
     </header>
     <section className="console-main wide" id="main-workspace" ref={mainScroller}>
+      {section === "desk" && <IntelligenceDesk
+        onStart={(subjectType, question = "") => {
+          setInvestigationSubject(subjectType);
+          setQuerySeed(question); setQuerySeedNonce(n => n + 1);
+          setCollectTab("开始研究"); setSection("collect");
+        }}
+        onOpenPool={() => { setCollectTab("行业样本"); setSection("collect"); }}
+        onOpenRelations={() => setSection("relations")}
+      />}
+
       {section === "collect" && <>
-        <ResearchOverview signalCount={signals.length} edgeCount={edgeCount} />
-        {signals.length > 0 && <LatestSignals signals={signals} onOpen={id => openJudgment(id)} />}
-        <TabBar tabs={["查情报", "贴材料", "FDE 查询包"] as CollectTab[]} active={collectTab} onPick={setCollectTab}
-          note="一句话用「查情报」，已有材料用「贴材料」，不知道下一家查谁用「FDE 查询包」。出来的候选走同一条判断线。" />
-        {collectTab === "查情报" && <QueryIntake key={`seed-${querySeedNonce}`} initialFragment={querySeed} onAccept={acceptCandidates} />}
-        {collectTab === "贴材料" && <Intake existing={signals} onAccept={acceptCandidates} onManual={() => setShowAdd(true)} onGoJudge={() => { setSection("judgment"); setJudgmentTab("逐条判断"); }} />}
-        {collectTab === "FDE 查询包" && <FdeQueryPack onPick={(presetQuery, name) => {
+        <TabBar tabs={["开始研究", "行业样本", "导入材料"] as CollectTab[]} active={collectTab} onPick={setCollectTab}
+          note="行业、公司与人员共享一套来源账本，但各自建立独立档案。" />
+        {collectTab === "开始研究" && <InvestigationWorkbench key={`seed-${investigationSubject}-${querySeedNonce}`} initialQuestion={querySeed} initialSubjectType={investigationSubject} onImportMaterial={() => setCollectTab("导入材料")} />}
+        {collectTab === "导入材料" && <Intake onAccept={acceptCandidates} onManual={() => setShowAdd(true)} />}
+        {collectTab === "行业样本" && <FdeQueryPack onPick={(presetQuery, name) => {
+          setInvestigationSubject("company");
           setQuerySeed(presetQuery);
           setQuerySeedNonce(n => n + 1);
-          setCollectTab("查情报");
-          setToast(`已填入「${name}」的 FDE 查询词，确认主体和维度后开始`);
+          setCollectTab("开始研究");
+          setToast(`已从行业样本池选中「${name}」，现在开始建立公司档案`);
         }} />}
       </>}
 
       {section === "relations" && <>
-        <TabBar tabs={["关联图谱", "覆盖版图", "人物动态", "关系分类"] as RelationTab[]} active={relationTab} onPick={setRelationTab}
-          note="这里只画关系，不下结论：投资、供货、竞争、人事、授权。" />
-        {relationTab === "关联图谱" && <RelationGraph signals={signals} onOpenSignal={id => openJudgment(id)} />}
-        {relationTab === "覆盖版图" && <MarketMapView signals={signals} people={people.map(person => person.name)} onOpenSignal={id => openJudgment(id)} />}
-        {relationTab === "人物动态" && <PeopleView people={people} signals={signals} onAdd={addPerson} onRemove={removePerson} onOpenSignal={signal => openJudgment(signal.id)} />}
-        {relationTab === "关系分类" && <RelationClusters topics={relationSummary} onOpen={signal => openJudgment(signal.id)} />}
+        <InvestigationGraph onStartResearch={question => {
+          setQuerySeed(question);
+          setInvestigationSubject("company");
+          setQuerySeedNonce(n => n + 1);
+          setSection("collect");
+          setCollectTab("开始研究");
+        }} />
       </>}
 
       {section === "judgment" && <>
@@ -454,11 +425,9 @@ export function SignalConsole() {
       </>}
     </section>
     <footer className="console-status">
-      <span><b>{signals.length}</b> 条情报</span>
-      <span><b>{edgeCount}</b> 条关系</span>
-      <span><b>{admittedCount}</b> 条六项已齐</span>
-      {readyForSign > 0 && <span className="status-highlight"><b>{readyForSign}</b> 条只差签字</span>}
-      <span><b>{feedback.length}</b> 次真实结果</span>
+      <span><b>调查档案</b> 独立保存</span>
+      <span><b>主张</b> 保留引用来源</span>
+      <span><b>原文</b> 后台逐条复核</span>
       <span className="status-spacer">{workspaceStatus}</span>
     </footer>
     {showAdd && <EvidenceModal draft={draft} setDraft={setDraft} onClose={() => setShowAdd(false)} onSubmit={addSignal} />}
@@ -474,64 +443,6 @@ function TabBar<T extends string>({ tabs, active, onPick, note }: {
     <div>{tabs.map(tab => <button key={tab} className={active === tab ? "active" : ""} onClick={() => onPick(tab)}>{tab}</button>)}</div>
     <small>{note}</small>
   </div>;
-}
-
-/** 首页情报脉冲：有数据时显示最近几条，不让首页只有输入框。 */
-function newsHeadline(signal: Signal): string {
-  const edge = signal.edges?.[0];
-  if (!edge) return signal.title;
-  const label = relationLabel(edge.relation);
-  if (edge.relation === "equity") return `${edge.from} 投资 ${edge.to}`;
-  if (edge.relation === "supply") return `${edge.from} → ${edge.to} · 供货交付`;
-  if (edge.relation === "personnel") return `${edge.from} ↔ ${edge.to} · 人事关联`;
-  if (edge.relation === "compete") return `${edge.from} × ${edge.to} · 竞争`;
-  if (edge.relation === "license") return `${edge.from} → ${edge.to} · ${label}`;
-  return `${edge.from} → ${edge.to} · ${label}`;
-}
-
-/** 首页情报流：事件日期第一优先；同日材料再按过闸进度与来源强度排序。 */
-function LatestSignals({ signals, onOpen }: { signals: Signal[]; onOpen: (id: string) => void }) {
-  const ranked = [...signals].sort((a, b) => {
-    const byEventDate = compareSignalEventDate(a, b);
-    if (byEventDate) return byEventDate;
-    const score = (signal: Signal) => {
-      const gate = gateState(signal);
-      let value = gate.passed * 120;
-      if (gate.passed === 5) value += 200; // 只差签字，最接近可行动
-      if (gate.executable) value += 300;
-      if (signal.constraints.sourceType === "independent") value += 40;
-      value += Math.min(100, Number(signal.candidateScore) || 0);
-      value += (signal.edges?.length || 0) * 10;
-      return value;
-    };
-    return score(b) - score(a) || String(b.createdAt).localeCompare(String(a.createdAt));
-  }).slice(0, 8);
-  const latest = ranked;
-
-  return <section className="latest-strip">
-    <header>
-      <div><small className="aside-kicker">情报流</small><h3>最近发生了什么</h3><p className="latest-rank-note">按事件或披露日期倒序；同日再看来源强度与判断进度。</p></div>
-      <button className="ghost-action" onClick={() => onOpen(latest[0]?.id || "")}>看全部 →</button>
-    </header>
-    <div className="latest-list">
-      {latest.map((signal, index) => {
-        const gate = gateState(signal);
-        const expired = isExpired(signal);
-        const status = expired ? "已过期" : gate.executable ? "已确认" : gate.passed === 5 ? "待签字" : "待核";
-        const relation = signal.edges?.[0];
-        const eventDate = signalEventDateLabel(signal);
-        return <button key={signal.id} className="latest-news" onClick={() => onOpen(signal.id)}>
-          <em className="news-rank">{String(index + 1).padStart(2, "0")}</em>
-          <div className="news-main">
-            <b>{newsHeadline(signal)}</b>
-            <p>{signal.evidence.length > 96 ? `${signal.evidence.slice(0, 96)}…` : signal.evidence}</p>
-            <span>{eventDate ? `事件 ${eventDate}` : "事件日期待核"} · {signal.source}{relation ? ` · ${relationLabel(relation.relation)}` : ""}</span>
-          </div>
-          <i className={`news-state ${expired ? "stale" : gate.executable ? "ok" : gate.passed === 5 ? "sign" : ""}`}>{status}</i>
-        </button>;
-      })}
-    </div>
-  </section>;
 }
 
 /**

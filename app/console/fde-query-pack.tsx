@@ -3,9 +3,8 @@
 import { useEffect, useState } from "react";
 
 /**
- * FDE 当前查询包。数据来自 /api/query/presets（冻结自最新报告台账的 231 家公司）。
- * 这是给「接下来查谁」用的清单，不替代确认步骤：点一条只把查询词填进查情报，
- * 主体、维度仍然要过一遍确认。
+ * 行业样本池。231 家公司是最初导入的 FDE 行业样本，不再绑定到一次性报告。
+ * 点一个样本会建立新的公司调查；主体、范围和来源仍在调查中单独确认。
  */
 
 type Preset = {
@@ -73,11 +72,11 @@ export function FdeQueryPack({ onPick }: { onPick: (query: string, name: string)
   return <div className="query-pack">
     <header className="query-pack-head">
       <div>
-        <small className="aside-kicker">FDE 当前查询包 · 定时自动更新</small>
-        <h3>从报告台账出发，持续补最新进展</h3>
+        <small className="aside-kicker">INDUSTRY SEED POOL · FDE 行业样本</small>
+        <h3>从首批样本出发，持续扩展行业情报</h3>
         <p>
-          初始数据冻结自 {data?.generatedAt || "2026-08-13"}；系统会定时挑「最久没查」的重点公司自动查询，
-          并把候选数、最近查询时间写回这里。
+          这批数据在 {data?.generatedAt || "2026-08-13"} 进入情报库；它们是行业观察的起点，不是结论。
+          选择一家公司后，系统会为它建立独立档案，并将后续来源、主张和关系持续写回看台。
           {scheduler?.running ? " · 调度器正在跑" : scheduler?.lastSummary ? ` · ${scheduler.lastSummary}` : ""}
         </p>
       </div>
@@ -97,9 +96,9 @@ export function FdeQueryPack({ onPick }: { onPick: (query: string, name: string)
     {!data && !error && <p className="history-empty">正在读取查询包…</p>}
     {data && <>
       <div className="query-pack-meta">
-        共 {data.total} 家 · 显示 {data.returned} 家
-        {scope === "fde" ? " · 这些公司已有交付模式相关事实，适合做复核查询" : ""}
-        {scope === "watchlist" ? " · 种子名单优先，先把核心样本补齐" : ""}
+        共 {data.total} 个公司样本 · 显示 {data.returned} 个
+        {scope === "fde" ? " · 已有与 FDE / 交付模式相关的初步材料" : ""}
+        {scope === "watchlist" ? " · 优先补全核心样本的最新来源" : ""}
       </div>
       <div className="query-pack-grid">
         {visible.map(item => <article key={item.id} className={item.watchlist ? "pack-card watch" : "pack-card"}>
@@ -119,7 +118,7 @@ export function FdeQueryPack({ onPick }: { onPick: (query: string, name: string)
               {item.lastSearchedAt ? ` · 最近查于 ${item.lastSearchedAt.slice(0, 10)}` : " · 尚未自动查询"}
               {typeof item.candidatesCount === "number" ? ` · 累计 ${item.candidatesCount} 条候选` : ""}
             </span>
-            <button className="primary-action" onClick={() => onPick(item.query, item.name)}>去查</button>
+            <button className="primary-action" onClick={() => onPick(item.query, item.name)}>建公司档案</button>
           </div>
         </article>)}
       </div>
