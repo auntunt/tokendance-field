@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Constraints, Signal, gateState } from "../../lib/field-core";
+import { Constraints } from "../../lib/field-core";
 import { relationLabel } from "../../lib/ontology";
 import { ViewHeader } from "./shared";
 
@@ -44,9 +44,9 @@ function unresolvedNames(candidate: Candidate) {
  * 私有情报不走 /api/extract：抽取器的契约是"逐条保留原文引语"，而私下听到的东西
  * 本来就是转述，没有原文可留。让它伪装成公开语料喂给抽取器，只会把来源谱系做假。
  */
-export function Intake({ onAccept, existing, onManual, onGoJudge }: {
-  onAccept: (candidates: Candidate[]) => void; existing: Signal[];
-  onManual: () => void; onGoJudge: () => void;
+export function Intake({ onAccept, onManual }: {
+  onAccept: (candidates: Candidate[]) => void;
+  onManual: () => void;
 }) {
   const [mode, setMode] = useState<"paste" | "url" | "private">("paste");
   const [text, setText] = useState("");
@@ -139,12 +139,10 @@ export function Intake({ onAccept, existing, onManual, onGoJudge }: {
     setCandidates([]); setPicked(new Set()); setText(""); setUrl("");
   }
 
-  const pending = existing.filter(signal => !gateState(signal).executable).length;
   const reset = (next: typeof mode) => { setMode(next); setError(""); setCandidates([]); setPicked(new Set()); };
 
   return <>
-    <ViewHeader kicker="第 1 步 / 收集" title="先把材料弄进来" copy="贴一段原文，或给一个链接，机器把「谁和谁有什么关系」挑出来。它只负责挑，判断得你自己下。"
-      action={existing.length ? `去判断（${pending} 条待补）` : undefined} onAction={onGoJudge} />
+    <ViewHeader kicker="导入材料" title="把原始材料带进研究" copy="贴一段原文，或给一个链接。系统会保留来源、提取明确关系，并把它们放进图谱。" />
     <div className="intake-mode-tabs">
       <button className={mode === "paste" ? "active" : ""} onClick={() => reset("paste")}>贴一段原文</button>
       <button className={mode === "url" ? "active" : ""} onClick={() => reset("url")}>给一个链接</button>

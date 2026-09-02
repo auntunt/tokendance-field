@@ -5,7 +5,8 @@
 //   第一次 POST { fragment } → 若 needsConfirmation=true，返回解析结果让用户确认
 //   第二次 POST { fragment, entityName, dimensions, confirmed:true } → 执行搜索
 //
-// 搜索后端：优先 Grok / OpenAI 的 Responses Web Search；没有密钥或调用失败时退回 Bing。
+// 搜索后端：优先 Grok / OpenAI 的 Responses Web Search；联网研究会给中转足够的
+// 时间返回引用，只有真正失败时才退回 Bing。
 // 抽取：复用 /api/collect 的核心逻辑（SSRF 防御、去重、extractRelations），
 //       不经 HTTP 层以避免 Basic Auth 二次验证问题。
 export const dynamic = "force-dynamic";
@@ -22,7 +23,8 @@ import { ROSTER } from "../../../lib/fde-roster";
 import { gradeOfUrl } from "../../../lib/corpus-import";
 import type { DimensionId } from "../../../lib/fde-dimensions";
 import { resolveCompany } from "../../../lib/company-resolver";
-import { activeResearchProvider, researchSearchGapMs, searchWeb } from "../../../lib/research/provider";
+import { activeResearchProvider, researchFirstDraftEstimateMs, researchSearchGapMs, researchWithLLM, searchWeb } from "../../../lib/research/provider";
+import type { ResearchMemo } from "../../../lib/research/types";
 import { fetchPublicDocument } from "../../../lib/research/fetch-document";
 import { buildResearchBrief } from "../../../lib/research/brief";
 import {
@@ -48,7 +50,7 @@ const MAX_URLS_PER_TASK = 3;
 /** 一次查询在内存里保留多久。任务完成或失败后，前端仍可凭 id 取回结果。 */
 const JOB_TTL_MS = 30 * 60_000;
 
-type FailedPage = { url: string; reason: string };
+type FailedPage = { url: string; stage: "fetch" | "extract"; reason: string };
 type SkippedResult = { url: string; title: string };
 type QueryCandidate = Record<string, unknown> & {
   _grade?: string;
@@ -83,6 +85,7 @@ type QueryJob = {
   gradeSummary: Record<string, number>;
   provider: ResearchProviderId;
   validationSummary: Record<string, number>;
+  researchMemo?: ResearchMemo;
   result?: Record<string, unknown>;
   error?: string;
 };
@@ -176,7 +179,71 @@ async function executeQueryJob(job: QueryJob) {
     let lastSearchAt = 0;
     let lastSearchProvider: ResearchProviderId = job.provider;
 
-    for (let taskIndex = 0; taskIndex < job.searchTasks.length; taskIndex++) {
+    job.progressText = "正在进行联网情报研究并整理带引用的初稿；这一步会优先保证来源完整。";
+    job.updatedAt = new Date().toISOString();
+    const memo = await researchWithLLM({
+      question: job.fragment,
+      entityName: job.entityName,
+      dimensions: job.dimensions,
+    });
+    if (memo?.findings.length) {
+      job.researchMemo = memo;
+      const seenFinding = new Set<string>();
+      for (const finding of memo.findings) {
+        const key = `${finding.sourceUrl}|${finding.title}`;
+        if (seenFinding.has(key)) continue;
+        seenFinding.add(key);
+        const sourceName = new URL(finding.sourceUrl).hostname;
+        const seenAt = new Date().toISOString();
+        const sourceId = recordResearchSource(db, {
+          url: finding.sourceUrl,
+          domain: sourceName,
+          title: finding.sourceTitle,
+          grade: gradeOfUrl(finding.sourceUrl),
+          contentHash: corpusFingerprint(finding.evidence),
+          contentText: finding.evidence,
+          fetchedAt: seenAt,
+        });
+        linkRunSource(db, {
+          runId: job.id,
+          sourceId,
+          searchQuery: job.fragment,
+          dimension: finding.dimension,
+          rank: allCandidates.length + 1,
+          provider: memo.provider,
+        });
+        const validation = recordResearchClaim(db, {
+          runId: job.id,
+          sourceId,
+          seenAt,
+          title: finding.title,
+          evidence: finding.evidence,
+          entityName: job.entityName,
+          dimension: finding.dimension,
+          edges: finding.edges,
+        });
+        allCandidates.push({
+          title: finding.title,
+          evidence: finding.evidence,
+          source: sourceName,
+          sourceUrl: finding.sourceUrl,
+          edges: finding.edges,
+          suggestedRelation: finding.edges[0]?.relation || "unclustered",
+          origin: "pipeline",
+          _grade: gradeOfUrl(finding.sourceUrl),
+          _dimension: finding.dimension,
+          _claimId: validation.claimId,
+          _validation: validation.status,
+          _sourceCount: validation.sourceCount,
+        });
+      }
+      job.urlsFetched = memo.sourceUrls.length;
+      job.completedTasks = job.totalTasks;
+      job.progressText = "已完成 Grok 研究初稿，正在写入来源账本…";
+    }
+
+    // 只有联网研究没有形成可引用初稿时，才退回旧的 URL 抓取路径。
+    if (!memo?.findings.length) for (let taskIndex = 0; taskIndex < job.searchTasks.length; taskIndex++) {
       const task = job.searchTasks[taskIndex];
       job.completedTasks = taskIndex;
       job.currentQuery = task.query;
@@ -187,8 +254,12 @@ async function executeQueryJob(job: QueryJob) {
       lastSearchAt = Date.now();
       const results = await searchWeb(task.query, MAX_URLS_PER_TASK);
       lastSearchProvider = results[0]?.provider || job.provider;
+      // 结果页必须展示本轮真正使用的来源提供方，不能把 Bing 回退标成 Grok。
+      job.provider = lastSearchProvider;
 
-      if (job.provider === "bing" && looksDegraded(job.entityName, results)) {
+      // 配置了托管搜索也可能因调用失败而回退 Bing。必须按这次实际返回的
+      // provider 判断降级，不能只看任务创建时的首选 provider，否则无关页面会进库。
+      if (results[0]?.provider === "bing" && looksDegraded(job.entityName, results)) {
         job.degradedQueries.push(task.query);
         continue;
       }
@@ -208,7 +279,7 @@ async function executeQueryJob(job: QueryJob) {
         try {
           document = await fetchPublicDocument(result.url, { timeoutMs: FETCH_TIMEOUT_MS, maxHtmlBytes: 500_000 });
         } catch (error) {
-          job.failedPages.push({ url: result.url, reason: error instanceof Error ? error.message : "抓取失败" });
+          job.failedPages.push({ url: result.url, stage: "fetch", reason: error instanceof Error ? error.message : "抓取失败" });
           continue;
         }
         if (processedUrls.has(document.canonicalUrl)) continue;
@@ -282,7 +353,7 @@ async function executeQueryJob(job: QueryJob) {
             });
           }
         } catch (err) {
-          job.failedPages.push({ url: result.url, reason: err instanceof Error ? err.message : "抽取失败" });
+          job.failedPages.push({ url: document.canonicalUrl, stage: "extract", reason: err instanceof Error ? err.message : "抽取失败" });
         }
       }
     }
@@ -292,7 +363,7 @@ async function executeQueryJob(job: QueryJob) {
       const validation = validationForClaim(db, candidate._claimId);
       return { ...candidate, _validation: validation.status, _sourceCount: validation.sourceCount };
     });
-    job.urlsFetched = urlsFetched;
+    job.urlsFetched = Math.max(urlsFetched, job.urlsFetched);
     job.gradeSummary = {
       statutory: job.candidates.filter(c => c._grade === "statutory").length,
       independent: job.candidates.filter(c => c._grade === "independent").length,
@@ -328,6 +399,7 @@ async function executeQueryJob(job: QueryJob) {
       candidates: job.candidates,
       gradeSummary: job.gradeSummary,
       validationSummary: job.validationSummary,
+      researchMemo: job.researchMemo,
       brief: buildResearchBrief({
         candidates: job.candidates.map(candidate => ({
           title: String(candidate.title || ""), evidence: String(candidate.evidence || ""), source: String(candidate.source || ""),
@@ -396,9 +468,9 @@ export async function POST(request: Request) {
         searchTasks,
         resolver,
         searchQueries: resolver.searchQueries,
-        // 两条路取更长的那条，给用户一个不会越等越久的预计时间
+        // 情报任务以可追溯初稿为第一目标，不按普通搜索的秒级等待估算。
         provider: activeResearchProvider(),
-        estimatedSeconds: Math.max(8, Math.round((Math.max(searchTasks.length, resolver.searchQueries.length) - 1) * researchSearchGapMs() / 1000)),
+        estimatedSeconds: Math.round(researchFirstDraftEstimateMs() / 1000),
       });
     }
 
@@ -471,7 +543,7 @@ export async function POST(request: Request) {
       fragment,
       dimensions: dimensions.map(d => ({ id: d.id, reason: d.reason, confidence: d.confidence })),
       searchTasks: searchTasks.map(t => ({ query: t.query, kind: t.kind, dimension: t.dimension })),
-      estimatedSeconds: Math.max(8, Math.round((searchTasks.length - 1) * researchSearchGapMs() / 1000)),
+      estimatedSeconds: Math.round(researchFirstDraftEstimateMs() / 1000),
       provider: job.provider,
     });
   } catch (error) {

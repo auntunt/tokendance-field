@@ -40,7 +40,7 @@ type ParsePhase = {
   provider?: ResearchProvider;
 };
 
-type FailedPage = { url: string; reason: string };
+type FailedPage = { url: string; stage: "fetch" | "extract"; reason: string };
 type SkippedResult = { url: string; title: string };
 
 type ResultPhase = {
@@ -61,6 +61,13 @@ type ResultPhase = {
   }>;
   gradeSummary: Record<string, number>;
   validationSummary?: Record<string, number>;
+  researchMemo?: {
+    summary: string;
+    findings: Array<{ title: string; evidence: string; sourceUrl: string; sourceTitle: string; dimension: string; edges: Array<{ from: string; to: string }> }>;
+    openQuestions: string[];
+    sourceUrls: string[];
+    provider: ResearchProvider;
+  };
   brief?: {
     verdict: "corroborated" | "provisional" | "insufficient";
     headline: string;
@@ -127,7 +134,11 @@ const EXAMPLES = [
   { label: "供应商更换", text: "听说A客户在换掉现在的电芯供应商" },
 ];
 
-export function QueryIntake({ onAccept, initialFragment = "" }: { onAccept: (candidates: Candidate[]) => void; initialFragment?: string }) {
+export function QueryIntake({ onAccept, onImportMaterial, initialFragment = "" }: {
+  onAccept: (candidates: Candidate[]) => void;
+  onImportMaterial: () => void;
+  initialFragment?: string;
+}) {
   const [fragment, setFragment] = useState(initialFragment);
   const [parsed, setParsed] = useState<ParsePhase | null>(null);
   const [results, setResults] = useState<ResultPhase | null>(null);
@@ -255,10 +266,23 @@ export function QueryIntake({ onAccept, initialFragment = "" }: { onAccept: (can
     requestAnimationFrame(() => inputRef.current?.focus());
   }
 
+  function retryResults() {
+    if (!results) return;
+    void runSearch(
+      results.fragment,
+      results.entityName,
+      results.dimensions.map(dimension => dimension.id),
+      results.searchTasks.map(task => task.query),
+    );
+  }
+
   const showConfirm = Boolean(parsed && parsed.needsConfirmation && !results);
   const currentStep: 1 | 2 | 3 = results ? 3 : showConfirm || (running && parsed) ? 2 : 1;
   const nonDuplicateIndexes = (results?.candidates || []).map((candidate, index) => candidate._duplicate ? null : index).filter((index): index is number => index !== null);
   const allPicked = nonDuplicateIndexes.length > 0 && pickedCandidates.size === nonDuplicateIndexes.length;
+  const hasSearchIssues = Boolean(results && (results.degradedQueries.length || results.failedPages.length || results.skippedResults?.length));
+  const fetchFailures = results?.failedPages.filter(page => page.stage === "fetch") || [];
+  const extractFailures = results?.failedPages.filter(page => page.stage === "extract") || [];
   const estimatedSeconds = parsed?.estimatedSeconds || 20;
 
   return <div className="query-intake">
@@ -403,12 +427,11 @@ export function QueryIntake({ onAccept, initialFragment = "" }: { onAccept: (can
           {running ? `搜索中… ${elapsed}s` : `开始查询（${pickedDimensions.size} 个维度）`}
         </button>
         <button className="ghost-action" onClick={() => { setParsed(null); setError(""); }}>取消</button>
-        {/* 慢是故意的：连续快速请求会让搜索引擎静默降级成无关结果。
-            不说清楚的话，等 100 秒会被当成卡死。 */}
+        {/* 情报研究会等待模型阅读网页和形成带引用初稿；这不是即时关键词搜索。 */}
         <small className="wait-note">
           {parsed.provider === "bing"
             ? `预计 ${parsed.estimatedSeconds || 20} 秒起。网页回退通道会主动错开请求，避免搜索引擎静默返回无关结果。`
-            : `${PROVIDER_LABEL[parsed.provider || ""] || "联网检索"}会先给出来源，再逐页抓取和抽取；耗时取决于原网页与抽取模型。`}
+            : `${PROVIDER_LABEL[parsed.provider || ""] || "联网检索"}会先阅读来源、形成带引用初稿，再逐页抓取和抽取；首次初稿通常需要 1–3 分钟。`}
         </small>
       </div>
     </section>}
@@ -426,7 +449,7 @@ export function QueryIntake({ onAccept, initialFragment = "" }: { onAccept: (can
       <small>
         {jobProgress
           ? `第 ${Math.min(jobProgress.completedTasks + 1, jobProgress.totalTasks)} / ${jobProgress.totalTasks} 组搜索词 · 已抓 ${jobProgress.urlsFetched} 个页面 · 已用 ${elapsed}s。任务在后台跑，页面关掉也不会被中断。`
-          : parsed ? `${PROVIDER_LABEL[parsed.provider || ""] || "联网检索"} · 预计至少 ${estimatedSeconds}s。页面会逐一经过安全抓取、去重与抽取。` : "规则解析通常几秒钟完成。"}
+          : parsed ? `${PROVIDER_LABEL[parsed.provider || ""] || "联网检索"} · 预计至少 ${estimatedSeconds}s。优先等待带引用初稿，页面随后会逐一经过安全抓取、去重与抽取。` : "规则解析通常几秒钟完成。"}
       </small>
     </div>}
 
@@ -462,6 +485,23 @@ export function QueryIntake({ onAccept, initialFragment = "" }: { onAccept: (can
         </li>)}</ul>
       </details>
 
+      {results.researchMemo && <section className="research-memo" aria-label="Grok 联网研究初稿">
+        <header>
+          <div><small>RESEARCH DRAFT · {PROVIDER_LABEL[results.researchMemo.provider]}</small><h4>这轮搜索先得到了什么</h4></div>
+          <span>{results.researchMemo.sourceUrls.length} 个引用来源</span>
+        </header>
+        <p className="memo-summary">{results.researchMemo.summary}</p>
+        <div className="memo-findings">
+          {results.researchMemo.findings.map((finding, index) => <article key={`${finding.sourceUrl}-${index}`}>
+            <b>{finding.title}</b>
+            <p>{finding.evidence}</p>
+            <a href={finding.sourceUrl} target="_blank" rel="noreferrer">{finding.sourceTitle || new URL(finding.sourceUrl).hostname} ↗</a>
+          </article>)}
+        </div>
+        {results.researchMemo.openQuestions.length > 0 && <div className="memo-questions"><b>仍待确认</b>{results.researchMemo.openQuestions.map((question, index) => <span key={index}>{question}</span>)}</div>}
+        <small className="memo-note">这是带来源的研究初稿；每条来源仍会进入账本，等待原文复核与第二来源印证。</small>
+      </section>}
+
       {results.brief && <section className={`intelligence-brief ${results.brief.verdict}`} aria-label="本轮情报简报">
         <header>
           <div><small>INTELLIGENCE BRIEF</small><h4>{results.brief.headline}</h4></div>
@@ -485,44 +525,29 @@ export function QueryIntake({ onAccept, initialFragment = "" }: { onAccept: (can
         </div>
       </section>}
 
-      {results.degradedQueries.length > 0 && <div className="degraded-note">
-        <b>有 {results.degradedQueries.length} 条搜索词被整批丢掉了</b>
-        <ul>{results.degradedQueries.map((q, i) => <li key={i}><code>{q}</code></li>)}</ul>
-        <small>
-          搜索引擎对这几条返回的结果里根本没有「{results.entityName}」——这是它被限流后的降级行为
-          （只按查询里第一个词出结果）。这种结果留着比丢掉更糟：抽取器会把它当正经语料。
-          隔几分钟单独重查这几个维度通常就好了。
-        </small>
-      </div>}
+      {!results.candidates.length && <section className="query-recovery" aria-label="下一步怎么做">
+        <small>这次暂时没有拿到可用证据</small>
+        <h4>{extractFailures.length
+          ? `${extractFailures.length} 个页面已抓到，但关系抽取没有完成。`
+          : fetchFailures.length
+            ? `${fetchFailures.length} 个候选页面没有成功打开。`
+            : "搜索结果不足以支持这个判断。"}</h4>
+        <p>这不是结论被否定，而是还没有足够可核验的原始材料。你可以直接重试、换一种说法，或提供一个你确认有内容的链接。</p>
+        <div>
+          <button type="button" className="primary-action" disabled={running} onClick={retryResults}>再试一次</button>
+          <button type="button" className="ghost-action" onClick={startOver}>换个说法</button>
+          <button type="button" className="ghost-action" onClick={onImportMaterial}>粘贴链接</button>
+        </div>
+      </section>}
 
-      {results.failedPages.length > 0 && <div className="degraded-note">
-        <b>有 {results.failedPages.length} 个页面抓到了但没抽出来</b>
-        <ul>{results.failedPages.map((p, i) => <li key={i}>
-          <code>{p.url}</code> <em>{p.reason}</em>
-        </li>)}</ul>
-        <small>
-          页面本身拿到了，是抽取这一步失败的（多半是模型网关超时）。
-          这几页没进证据库，也没算进候选——重查一次通常就好了。
-        </small>
-      </div>}
-
-      {results.skippedResults?.length > 0 && <div className="degraded-note">
-        <b>有 {results.skippedResults.length} 条结果判定跟这家主体无关，没有抓取</b>
-        <ul>{results.skippedResults.map((s, i) => <li key={i}>
-          <em>{s.title || "无标题"}</em> <code>{s.url}</code>
-        </li>)}</ul>
-        <small>
-          搜索引擎被限流时会只按查询里的第一个词出结果（搜「世纪互联」返回世纪佳缘）。
-          标题和摘要里都不含主体名的，在抓取前就筛掉了——省一次抓取，也免得脏语料进证据库。
-          要是这里出现了你认为相关的页面，说明这条规则误杀了，改一下确认面板里的主体名再试。
-        </small>
-      </div>}
-
-      {!results.candidates.length && <p className="confirm-none">
-        这一轮什么都没抽到。可能是搜索结果都是动态渲染页面（很多国内站点对非浏览器直接返 403），
-        或者这个主体在公开文本里确实没有这些维度的材料。
-        换个说法再试，或者用「贴材料」直接贴一个你知道有内容的 URL。
-      </p>}
+      {hasSearchIssues && <details className="search-issues">
+        <summary>查看本次检索详情</summary>
+        {results.degradedQueries.length > 0 && <p>有 {results.degradedQueries.length} 条搜索词的结果与「{results.entityName}」无关，已排除。</p>}
+        {fetchFailures.length > 0 && <p>有 {fetchFailures.length} 个页面无法抓取；它们没有写入证据库。</p>}
+        {extractFailures.length > 0 && <p>有 {extractFailures.length} 个页面已抓取但抽取失败；正文已留存，可在服务恢复后重试。</p>}
+        {results.failedPages.length > 0 && <ul>{results.failedPages.map((page, index) => <li key={index}><code>{page.url}</code><span>{page.stage === "fetch" ? "抓取失败" : "抽取失败"} · {page.reason}</span></li>)}</ul>}
+        {results.skippedResults?.length > 0 && <p>另有 {results.skippedResults.length} 条结果在抓取前被判定为与主体无关。</p>}
+      </details>}
 
       {results.candidates.length > 0 && <>
         <div className="results-toolbar">

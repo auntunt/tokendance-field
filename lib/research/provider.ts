@@ -1,7 +1,10 @@
-import type { ResearchProviderId, ResearchProviderStatus, WebSearchHit } from "./types";
+import type { ResearchFinding, ResearchMemo, ResearchProviderId, ResearchProviderStatus, WebSearchHit } from "./types";
 
 const SEARCH_UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36";
-const SEARCH_TIMEOUT_MS = 28_000;
+// 联网情报研究不是即时搜索。兼容中转的 web_search 经常需要读数个页面后
+// 才返回引用；28 秒会把正常的研究误判为失败，再悄悄退回 Bing。
+const DEFAULT_HOSTED_SEARCH_TIMEOUT_MS = 180_000;
+const DEFAULT_RESEARCH_MEMO_TIMEOUT_MS = 180_000;
 
 type ProviderConfig = {
   id: ResearchProviderId;
@@ -23,6 +26,76 @@ type ResponsesBody = {
   citations?: string[];
   error?: { message?: string };
 };
+
+function researchTimeoutMs(name: "RESEARCH_WEB_SEARCH_TIMEOUT_MS" | "RESEARCH_LLM_TIMEOUT_MS", fallback: number, minimum: number) {
+  const configured = Number(process.env[name]);
+  return Number.isFinite(configured) ? Math.max(minimum, configured) : fallback;
+}
+
+function hostedSearchTimeoutMs() {
+  return researchTimeoutMs("RESEARCH_WEB_SEARCH_TIMEOUT_MS", DEFAULT_HOSTED_SEARCH_TIMEOUT_MS, 30_000);
+}
+
+function researchMemoTimeoutMs() {
+  return researchTimeoutMs("RESEARCH_LLM_TIMEOUT_MS", DEFAULT_RESEARCH_MEMO_TIMEOUT_MS, 60_000);
+}
+
+function responseText(body: ResponsesBody) {
+  const parts: string[] = [];
+  if (body.output_text) parts.push(body.output_text);
+  for (const item of body.output || []) {
+    for (const content of item.content || []) if (content.text) parts.push(content.text);
+  }
+  return cleanText(parts.join("\n"));
+}
+
+function citedUrls(body: ResponsesBody) {
+  const urls = new Set<string>();
+  const take = (value?: string) => {
+    if (!value) return;
+    try { const url = new URL(value); url.hash = ""; urls.add(url.toString()); } catch { /* Ignore non-web citations. */ }
+  };
+  for (const item of body.output || []) {
+    for (const source of item.action?.sources || []) take(source.url);
+    for (const content of item.content || []) for (const annotation of content.annotations || []) take(annotation.url);
+  }
+  for (const url of body.citations || []) take(url);
+  return [...urls];
+}
+
+function jsonFromModel(text: string): Record<string, unknown> | null {
+  const plain = text.replace(/^\s*```(?:json)?/i, "").replace(/```\s*$/, "").trim();
+  const start = plain.indexOf("{"); const end = plain.lastIndexOf("}");
+  if (start < 0 || end < start) return null;
+  try { return JSON.parse(plain.slice(start, end + 1)) as Record<string, unknown>; } catch { return null; }
+}
+
+function compact(value: unknown, limit: number) { return String(value ?? "").replace(/\s+/g, " ").trim().slice(0, limit); }
+
+function normalizeFinding(value: unknown, allowedUrls: Set<string>): ResearchFinding | null {
+  if (!value || typeof value !== "object") return null;
+  const raw = value as Record<string, unknown>;
+  const sourceUrl = compact(raw.sourceUrl, 1200);
+  let normalizedUrl = "";
+  try { const url = new URL(sourceUrl); url.hash = ""; normalizedUrl = url.toString(); } catch { return null; }
+  // 模型产出只能引用本轮工具实际返回的网页，避免把“看似合理”的链接伪造成来源。
+  if (!allowedUrls.has(normalizedUrl)) return null;
+  const edges = Array.isArray(raw.edges) ? raw.edges.flatMap(edge => {
+    if (!edge || typeof edge !== "object") return [];
+    const item = edge as Record<string, unknown>;
+    const from = compact(item.from, 120), to = compact(item.to, 120);
+    const relation = compact(item.relation, 40);
+    const quote = compact(item.quote, 600);
+    if (!from || !to || !quote || ![
+      "equity", "supply", "compete", "personnel", "license",
+      "organization", "product", "deployment", "partnership",
+    ].includes(relation)) return [];
+    return [{ from, to, relation, direction: item.direction === "mutual" ? "mutual" as const : "forward" as const, quote }];
+  }) : [];
+  const title = compact(raw.title, 240), evidence = compact(raw.evidence, 1600);
+  if (!title || evidence.length < 16) return null;
+  return { title, evidence, sourceUrl: normalizedUrl, sourceTitle: compact(raw.sourceTitle, 240) || new URL(normalizedUrl).hostname, dimension: compact(raw.dimension, 80) || "business", edges };
+}
 
 function responseEndpoint(base: string) {
   const cleaned = base.replace(/\/+$/, "");
@@ -89,6 +162,11 @@ export function researchSearchGapMs() {
   return configuredProvider().id === "bing" ? 20_000 : 0;
 }
 
+/** 给界面用的保守预期：首次可读初稿不追求秒回。 */
+export function researchFirstDraftEstimateMs() {
+  return configuredProvider().id === "bing" ? 20_000 : Math.min(researchMemoTimeoutMs(), 120_000);
+}
+
 function cleanText(value: string) {
   return value.replace(/\[\[\d+\]\]\([^)]*\)/g, "").replace(/\s+/g, " ").trim();
 }
@@ -134,7 +212,7 @@ function collectResponseHits(body: ResponsesBody, provider: "xai" | "openai", ma
 
 async function hostedSearch(config: ProviderConfig, query: string, maxResults: number): Promise<WebSearchHit[]> {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), SEARCH_TIMEOUT_MS);
+  const timer = setTimeout(() => controller.abort(), hostedSearchTimeoutMs());
   try {
     const body: Record<string, unknown> = {
       model: config.model,
@@ -151,6 +229,56 @@ async function hostedSearch(config: ProviderConfig, query: string, maxResults: n
     const data = await response.json() as ResponsesBody;
     if (!response.ok) throw new Error(data.error?.message || `${config.id} 联网搜索失败（${response.status}）`);
     return collectResponseHits(data, config.id as "xai" | "openai", maxResults);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
+ * 把联网模型当研究员，而非 URL 枚举器。模型的初稿保留结论与引用；
+ * 网页抓取仍会在后续阶段做原文复核，但不会再决定初稿是否存在。
+ */
+export async function researchWithLLM(input: {
+  question: string;
+  entityName: string;
+  dimensions: string[];
+  /** A dossier deliberately researches several independent angles instead of
+   * treating one web-search response as the whole answer. */
+  lens?: { title: string; instruction: string };
+}): Promise<ResearchMemo | null> {
+  const config = configuredProvider();
+  if (config.id !== "xai" && config.id !== "openai") return null;
+  const controller = new AbortController();
+  // Some hosted web-search providers take longer than ordinary completions
+  // because they are reading several pages before returning citations. Keep
+  // this independently configurable, rather than silently giving up at 90s.
+  const timeoutMs = researchMemoTimeoutMs();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(config.endpoint!, {
+      method: "POST",
+      signal: controller.signal,
+      headers: { "content-type": "application/json", authorization: `Bearer ${config.apiKey}` },
+      body: JSON.stringify({
+        model: config.model,
+        input: [{ role: "user", content: `你是企业情报研究员。请联网研究以下问题，并只输出 JSON（不要 Markdown）：\n\n问题：${input.question}\n主体：${input.entityName}\n本轮研究角度：${input.lens?.title || "综合研究"}\n本轮要求：${input.lens?.instruction || "梳理与问题最相关、可公开核对的事实。"}\n关注维度：${input.dimensions.join("、")}\n\nJSON 格式：\n{"summary":"给决策者读的2-4句初稿","findings":[{"title":"可阅读的具体发现","evidence":"来源中支持该发现的原文摘录或精确转述","sourceUrl":"必须来自本轮联网工具返回的网页URL","sourceTitle":"来源标题","dimension":"业务/融资/团队等","edges":[{"from":"主体","to":"主体","relation":"equity|supply|compete|personnel|license|organization|product|deployment|partnership","direction":"forward|mutual","quote":"来源中的关系原文"}]}],"openQuestions":["仍待验证的问题"]}\n\n规则：优先法定披露、官网和独立媒体；最多 6 条发现；没有明确主体关系时 edges 为空数组；不要编造 URL 或关系；把战略、产品、部署进展和商业化证据分开。组织部门、产品、项目或落地场景也可以作为图谱节点，但只能在引用原文明确说出归属、负责、发布或部署关系时输出。每条发现都必须能追溯到本轮工具实际返回的 URL。` }],
+        tools: [{ type: "web_search" }],
+      }),
+    });
+    const body = await response.json() as ResponsesBody;
+    if (!response.ok) throw new Error(body.error?.message || `${config.id} 联网研究失败（${response.status}）`);
+    const sourceUrls = citedUrls(body);
+    const allowed = new Set(sourceUrls);
+    const parsed = jsonFromModel(responseText(body));
+    if (!parsed) return null;
+    const findings = (Array.isArray(parsed.findings) ? parsed.findings : []).map(item => normalizeFinding(item, allowed)).filter((item): item is ResearchFinding => Boolean(item)).slice(0, 6);
+    const openQuestions = (Array.isArray(parsed.openQuestions) ? parsed.openQuestions : []).map(item => compact(item, 220)).filter(Boolean).slice(0, 5);
+    const summary = compact(parsed.summary, 1800);
+    if (!summary && !findings.length) return null;
+    return { summary, findings, openQuestions, sourceUrls, provider: config.id };
+  } catch (error) {
+    console.warn(`[research] ${config.id} research memo failed:`, error instanceof Error ? error.message : error);
+    return null;
   } finally {
     clearTimeout(timer);
   }
@@ -187,7 +315,7 @@ function collectAnthropicHits(payload: unknown, maxResults: number): WebSearchHi
 
 async function anthropicSearch(config: ProviderConfig, query: string, maxResults: number): Promise<WebSearchHit[]> {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), SEARCH_TIMEOUT_MS);
+  const timer = setTimeout(() => controller.abort(), hostedSearchTimeoutMs());
   try {
     const response = await fetch(config.endpoint!, {
       method: "POST",
