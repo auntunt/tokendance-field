@@ -565,7 +565,8 @@ a.ghost-action { border-radius: 7px; }
 
 /* ---- 查情报：左侧工作流 + 右侧助手栏 ---- */
 .query-intake { max-width: none; padding-top: 2px; }
-.query-workbench { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 22px; align-items: start; }
+.research-start{max-width:780px;margin:24px 0 28px}.research-start>span{color:var(--field-accent);font:650 10px/1 var(--font-geist-mono),monospace;letter-spacing:.12em}.research-start h1{margin:11px 0 10px;color:var(--field-text);font-size:clamp(34px,4.4vw,58px);font-weight:650;line-height:.98;letter-spacing:-.055em}.research-start p{max-width:54ch;margin:0;color:#8a8780;font-size:14px;line-height:1.75;text-wrap:pretty}
+.query-workbench { display: grid; grid-template-columns: minmax(0, 880px); gap: 22px; align-items: start; }
 .query-stage { min-width: 0; }
 
 .query-steps { display: flex; align-items: center; margin: 0 0 16px; padding: 0; list-style: none; }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import type { Candidate } from "./intake";
 import type { ResolverResult } from "../../lib/company-resolver";
 
@@ -97,8 +97,6 @@ type JobStatus = {
   error?: string;
 };
 
-type QueryLogRow = { id: string; fragment: string; entity_name: string; dimensions: string; searched_at: string; candidates_count: number };
-
 const TASK_KIND_LABEL: Record<string, string> = {
   anchor: "锚定", salient: "你问的那件事", dimension: "维度补齐", clue: "线索追踪",
 };
@@ -142,26 +140,8 @@ export function QueryIntake({ onAccept, initialFragment = "" }: { onAccept: (can
   const [elapsed, setElapsed] = useState(0);
   const [progressText, setProgressText] = useState("");
   const [jobProgress, setJobProgress] = useState<JobStatus | null>(null);
-  const [history, setHistory] = useState<QueryLogRow[]>([]);
-  const [historyLoaded, setHistoryLoaded] = useState(false);
   const [acceptedCount, setAcceptedCount] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    void fetch("/api/query").then(async response => {
-      const data = await response.json() as { logs?: QueryLogRow[] };
-      if (response.ok) {
-        const seen = new Set<string>();
-        setHistory((data.logs || []).filter(row => {
-          const key = row.fragment.trim().toLowerCase();
-          if (seen.has(key)) return false;
-          seen.add(key);
-          return true;
-        }).slice(0, 8));
-      }
-      setHistoryLoaded(true);
-    }).catch(() => setHistoryLoaded(true));
-  }, []);
 
   async function runParse() {
     if (fragment.trim().length < 2) { setError("查询词太短"); return; }
@@ -282,19 +262,24 @@ export function QueryIntake({ onAccept, initialFragment = "" }: { onAccept: (can
   const estimatedSeconds = parsed?.estimatedSeconds || 20;
 
   return <div className="query-intake">
+    <section className="research-start">
+      <span>开始研究</span>
+      <h1>你想核实什么？</h1>
+      <p>写下公司、人物或事件。系统会找原始来源、打开正文，再告诉你哪些能说、哪些还需要验证。</p>
+    </section>
     <div className="query-workbench">
       <section className="query-stage">
         <QuerySteps step={currentStep} />
 
         <div className="query-box">
           <label>
-            <span className="query-label">用一句人话描述你想查的事</span>
+            <span className="query-label">问题 / 线索</span>
             <input
               ref={inputRef}
               value={fragment}
               onChange={e => setFragment(e.target.value)}
               onKeyDown={e => { if (e.key === "Enter" && !running) void runParse(); }}
-              placeholder="模糊也行：世纪互联最近启动了opc设计建设 / 广联达控股 上市"
+              placeholder="例如：广联达最近在哪些环节推进 AI？"
               disabled={running}
               autoFocus
             />
@@ -304,7 +289,7 @@ export function QueryIntake({ onAccept, initialFragment = "" }: { onAccept: (can
           </button>
         </div>
         <div className="query-underbox">
-          <small className="query-hint">片段、错别字、听来的半句话都可以。系统会先纠错、消歧、路由到维度，让你确认后再去搜。</small>
+          <small className="query-hint">半句话、错别字、听来的线索都可以。下一步会让你确认主体和范围，不会直接把猜测当结论。</small>
           {!running && !results && !showConfirm && <div className="query-examples">
             <span>试一个：</span>
             {EXAMPLES.map(example => <button key={example.label} onClick={() => applyExample(example.text)}>{example.label}</button>)}
@@ -591,30 +576,6 @@ export function QueryIntake({ onAccept, initialFragment = "" }: { onAccept: (can
     </section>}
       </section>
 
-      <aside className="query-aside">
-        <section className="aside-card query-guide">
-          <small className="aside-kicker">怎么用</small>
-          <h3>把模糊的线索交给系统</h3>
-          <ol>
-            <li><b>写一句人话</b><span>不用给关键词，半句话、错别字都可以。</span></li>
-            <li><b>确认主体和维度</b><span>纠错与消歧结果必须由你点头才继续。</span></li>
-            <li><b>收下可信候选</b><span>来源分级只说明出处，六道门仍要逐条过。</span></li>
-          </ol>
-          <p className="query-guide-note">来源不是答案。系统会打开原链接、保存正文指纹，并把“独立原文”和“同稿转载”分开计算。</p>
-        </section>
-
-        <section className="aside-card query-history">
-          <small className="aside-kicker">最近查过</small>
-          {!historyLoaded && <p className="history-empty">正在读取…</p>}
-          {historyLoaded && history.length === 0 && <p className="history-empty">还没有查询记录。查过的公司和维度会留在这里。</p>}
-          {history.length > 0 && <div className="history-list">
-            {history.map(item => <button key={item.id} onClick={() => applyExample(item.fragment)} title={item.fragment}>
-              <b>{item.fragment}</b>
-              <span>{item.entity_name || "未识别主体"} · {item.searched_at.slice(0, 10)} · {item.candidates_count} 条</span>
-            </button>)}
-          </div>}
-        </section>
-      </aside>
     </div>
   </div>;
 }
