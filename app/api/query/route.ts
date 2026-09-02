@@ -24,6 +24,7 @@ import type { DimensionId } from "../../../lib/fde-dimensions";
 import { resolveCompany } from "../../../lib/company-resolver";
 import { activeResearchProvider, researchSearchGapMs, searchWeb } from "../../../lib/research/provider";
 import { fetchPublicDocument } from "../../../lib/research/fetch-document";
+import { buildResearchBrief } from "../../../lib/research/brief";
 import {
   beginResearchRun, completeResearchRun, linkRunSource, recordResearchClaim,
   recordResearchSource, validationForClaim,
@@ -327,6 +328,16 @@ async function executeQueryJob(job: QueryJob) {
       candidates: job.candidates,
       gradeSummary: job.gradeSummary,
       validationSummary: job.validationSummary,
+      brief: buildResearchBrief({
+        candidates: job.candidates.map(candidate => ({
+          title: String(candidate.title || ""), evidence: String(candidate.evidence || ""), source: String(candidate.source || ""),
+          sourceUrl: typeof candidate.sourceUrl === "string" ? candidate.sourceUrl : undefined,
+          dimension: candidate._dimension, validation: candidate._validation,
+          duplicate: candidate._duplicate,
+        })),
+        failedPages: job.failedPages,
+        degradedQueries: job.degradedQueries,
+      }),
       provider: job.provider,
     };
     completeResearchRun(db, job.id, "done", now);

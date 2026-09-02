@@ -61,6 +61,15 @@ type ResultPhase = {
   }>;
   gradeSummary: Record<string, number>;
   validationSummary?: Record<string, number>;
+  brief?: {
+    verdict: "corroborated" | "provisional" | "insufficient";
+    headline: string;
+    usable: Array<{ title: string; evidence: string; source: string; sourceUrl?: string }>;
+    needsValidation: Array<{ title: string; evidence: string; source: string; sourceUrl?: string }>;
+    repeatedCopies: number;
+    evidenceGaps: string[];
+    nextActions: string[];
+  };
   provider?: ResearchProvider;
 };
 
@@ -467,6 +476,29 @@ export function QueryIntake({ onAccept, initialFragment = "" }: { onAccept: (can
           <em>{TASK_KIND_LABEL[t.kind] || t.kind}</em>
         </li>)}</ul>
       </details>
+
+      {results.brief && <section className={`intelligence-brief ${results.brief.verdict}`} aria-label="本轮情报简报">
+        <header>
+          <div><small>INTELLIGENCE BRIEF</small><h4>{results.brief.headline}</h4></div>
+          <span>{results.brief.verdict === "corroborated" ? "可暂用" : results.brief.verdict === "provisional" ? "待验证" : "证据不足"}</span>
+        </header>
+        <div className="brief-grid">
+          <div>
+            <b>现在能说什么</b>
+            {results.brief.usable.length
+              ? <ul>{results.brief.usable.map((item, index) => <li key={index}><strong>{item.title}</strong><span>{item.source}</span></li>)}</ul>
+              : <p>没有。系统不会把单一来源或转载包装成已证实结论。</p>}
+          </div>
+          <div>
+            <b>还缺什么</b>
+            <ul>{results.brief.evidenceGaps.map((item, index) => <li key={index}>{item}</li>)}</ul>
+          </div>
+          <div>
+            <b>下一步动作</b>
+            <ol>{results.brief.nextActions.map((item, index) => <li key={index}>{item}</li>)}</ol>
+          </div>
+        </div>
+      </section>}
 
       {results.degradedQueries.length > 0 && <div className="degraded-note">
         <b>有 {results.degradedQueries.length} 条搜索词被整批丢掉了</b>
